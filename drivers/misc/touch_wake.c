@@ -420,6 +420,8 @@ void touch_press(bool up)
 			in_touch = false;
 
 			struct timeval now;
+			int time_pressed;
+
 			do_gettimeofday(&now);
 			time_pressed = (now.tv_sec - touch_begin.tv_sec) * MSEC_PER_SEC +
 				(now.tv_usec - touch_begin.tv_usec) / USEC_PER_MSEC;
