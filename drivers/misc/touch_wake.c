@@ -354,8 +354,10 @@ void proximity_off(void)
 	pr_info("[TOUCHWAKE] Proximity disabled\n");
 #endif
 
-	if (wake_proximitor)
-		touch_press();
+	if (device_suspended && !in_touch && wake_proximitor) {
+		in_touch = true;
+		touch_press(true);
+	}
 	return;
 }
 EXPORT_SYMBOL(proximity_off);
@@ -422,7 +424,7 @@ void touch_press(bool up)
 			time_pressed = (now.tv_sec - touch_begin.tv_sec) * MSEC_PER_SEC +
 				(now.tv_usec - touch_begin.tv_usec) / USEC_PER_MSEC;
 
-			if (time_pressed > TIME_LONGPRESS)
+			if (time_pressed > TIME_LONGPRESS && mutex_trylock(&lock))
 				schedule_work(&presspower_work);
 		}
 	}
