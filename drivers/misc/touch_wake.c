@@ -54,6 +54,7 @@ static unsigned int touchoff_delay = (30 * 1000);
 
 static bool prox_was_enabled = false;
 static bool prox_near = false;
+static bool in_touch = false;
 
 static void touchwake_touchoff(struct work_struct * touchoff_work);
 static DECLARE_DELAYED_WORK(touchoff_work, touchwake_touchoff);
@@ -64,9 +65,10 @@ static DEFINE_MUTEX(lock);
 static struct input_dev * powerkey_device;
 static struct wake_lock touchwake_wake_lock;
 static struct timeval last_powerkeypress;
+static struct timeval touch_begin;
 
 #define TOUCHWAKE_VERSION 2
-#define TIME_LONGPRESS 500
+#define TIME_LONGPRESS 400
 #define POWERPRESS_DELAY 100
 #define POWERPRESS_TIMEOUT 1000
 
@@ -104,8 +106,8 @@ static void touchwake_early_suspend(struct early_suspend * h)
 #ifdef DEBUG_PRINT
 				pr_info("[TOUCHWAKE] Early suspend - enable touch delay\n");
 #endif
-			if (keep_wake_lock)
-				wake_lock(&touchwake_wake_lock);
+				if (keep_wake_lock)
+					wake_lock(&touchwake_wake_lock);
 
 				schedule_delayed_work(&touchoff_work, msecs_to_jiffies(touchoff_delay));
 			}
@@ -162,7 +164,7 @@ static void touchwake_late_resume(struct early_suspend * h)
 	if (touch_disabled)
 		touchwake_enable_touch();
 
-	if (wake_proximitor) 
+	if (wake_proximitor)
 		restore_for_touchwake();
 
 	timed_out = true;
@@ -400,14 +402,30 @@ void powerkey_released(void)
 }
 EXPORT_SYMBOL(powerkey_released);
 
-void touch_press(void)
+void touch_press(bool up)
 {
 #ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Touch press detected\n");
+	pr_info("[TOUCHWAKE] Touch event! Up = %d\n", up);
 #endif
 
-	if (unlikely(device_suspended && touchwake_enabled && (!prox_near || !use_proximitor) && mutex_trylock(&lock)))
-		schedule_work(&presspower_work);
+	if (likely(touchwake_enabled)) {
+		if (unlikely(device_suspended && (!prox_near || !use_proximitor) && mutex_trylock(&lock))) {
+			in_touch = true;
+			do_gettimeofday(&touch_begin);
+			schedule_work(&presspower_work);
+		}
+		else if (up && in_touch) {
+			in_touch = false;
+
+			struct timeval now;
+			do_gettimeofday(&now);
+			time_pressed = (now.tv_sec - touch_begin.tv_sec) * MSEC_PER_SEC +
+				(now.tv_usec - touch_begin.tv_usec) / USEC_PER_MSEC;
+
+			if (time_pressed > TIME_LONGPRESS)
+				schedule_work(&presspower_work);
+		}
+	}
 
 	return;
 }
