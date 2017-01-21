@@ -941,6 +941,7 @@ static void mms_ts_late_resume(struct early_suspend *h)
 	mms_ts_resume(&info->client->dev);
 #endif
 }
+#endif
 
 #ifdef CONFIG_TOUCH_WAKE
 static struct mms_ts_info * touchwake_data;
