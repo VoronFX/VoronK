@@ -167,10 +167,6 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		       DUMP_PREFIX_OFFSET, 32, 1, buf, sz, false);
 #endif
 
-#ifdef CONFIG_TOUCH_WAKE
-	touch_press();
-#endif
-
 	for (i = 0; i < sz; i += FINGER_EVENT_SZ) {
 		u8 *tmp = &buf[i];
 		int id = (tmp[0] & 0xf) - 1;
@@ -193,8 +189,15 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			input_mt_slot(info->input_dev, id);
 			input_mt_report_slot_state(info->input_dev,
 						   MT_TOOL_FINGER, false);
+#ifdef CONFIG_TOUCH_WAKE
+			touch_press(true);
+#endif
 			continue;
 		}
+
+#ifdef CONFIG_TOUCH_WAKE
+		touch_press(false);
+#endif
 
 		input_mt_slot(info->input_dev, id);
 		input_mt_report_slot_state(info->input_dev,

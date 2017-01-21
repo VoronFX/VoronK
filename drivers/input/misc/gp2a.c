@@ -36,9 +36,10 @@
 
 #ifdef CONFIG_TOUCH_WAKE
 #include <linux/touch_wake.h>
-struct gp2a_data *current_device;
-bool laststate;
+bool proximity_last_state;
+bool forced_by_touch_wake;
 #endif
+struct gp2a_data *current_device;
 
 /* Note about power vs enable/disable:
  *  The chip has two functions, proximity and ambient light sensing.
@@ -249,24 +250,33 @@ static ssize_t proximity_enable_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t size)
 {
-	pr_info("[TOUCHWAKE_PROXIMITY] NULL %d \n", dev);
-
-	struct gp2a_data *gp2a = (dev == NULL) ? current_device : dev_get_drvdata(dev);
 	bool new_value;
 
 	if (sysfs_streq(buf, "1")) {
 		new_value = true;
+#ifdef DEBUG_PRINT
 		pr_info("[TOUCHWAKE_PROXIMITY] Turning On\n");
-
+#endif
 	}
 	else if (sysfs_streq(buf, "0")) {
 		new_value = false;
+#ifdef DEBUG_PRINT
 		pr_info("[TOUCHWAKE_PROXIMITY] Turning Off\n");
+#endif
 	}
 	else {
 		pr_err("%s: invalid value %d\n", __func__, *buf);
 		return -EINVAL;
 	}
+
+#ifdef DEBUG_PRINT
+	if (forced_by_touch_wake) {
+		proximity_last_state = new_value;
+		return;
+	}
+#endif
+
+	struct gp2a_data *gp2a = (dev == NULL) ? current_device : dev_get_drvdata(dev);
 
 	mutex_lock(&gp2a->power_lock);
 	gp2a_dbgmsg("new_value = %d, old state = %d\n",
@@ -375,9 +385,10 @@ irqreturn_t gp2a_irq_handler(int irq, void *data)
 	/* 0 is close, 1 is far */
 	input_report_abs(ip->proximity_input_dev, ABS_DISTANCE, val);
 	input_sync(ip->proximity_input_dev);
-	pr_info("[TOUCHWAKE_PROXIMITY] Timeout1 %d", &ip->prx_wake_lock);
-	pr_info("[TOUCHWAKE_PROXIMITY] Timeout2 %d", ip->prx_wake_lock);
-	//wake_lock_timeout(&ip->prx_wake_lock, 3 * HZ);
+#ifdef DEBUG_PRINT
+	if (!forced_by_touch_wake)
+#endif
+		wake_lock_timeout(&ip->prx_wake_lock, 3 * HZ);
 	return IRQ_HANDLED;
 }
 
@@ -464,14 +475,11 @@ static int gp2a_i2c_probe(struct i2c_client *client,
 
 #ifdef CONFIG_TOUCH_WAKE
 	current_device = gp2a;
-	pr_info("[TOUCHWAKE_PROXIMITY] Curr device %d\n", current_device);
-
 #endif
 
 	gp2a->pdata = pdata;
 	gp2a->i2c_client = client;
 	i2c_set_clientdata(client, gp2a);
-
 
 	wake_lock_init(&gp2a->prx_wake_lock, WAKE_LOCK_SUSPEND,
 		"prx_wake_lock");
@@ -665,12 +673,14 @@ static void __exit gp2a_exit(void)
 
 #ifdef CONFIG_TOUCH_WAKE
 void enable_for_touchwake(void) {
-	laststate = current_device->power_state & PROXIMITY_ENABLED;
+	proximity_last_state = current_device->power_state & PROXIMITY_ENABLED;
 	proximity_enable_store(NULL, NULL, "1", 1);
+	forced_by_touch_wake = true;
 }
 
 void restore_for_touchwake(void) {
-	proximity_enable_store(NULL, NULL, laststate ? "1" : "0", 1);
+	forced_by_touch_wake = false;
+	proximity_enable_store(NULL, NULL, proximity_last_state ? "1" : "0", 1);
 }
 #endif
 
