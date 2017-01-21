@@ -412,7 +412,7 @@ void touch_press(bool up)
 			do_gettimeofday(&touch_begin);
 			schedule_work(&presspower_work);
 		}
-		else if (up && first_touch)) {
+		else if (up && first_touch) {
 			first_touch = false;
 
 			struct timeval now;
