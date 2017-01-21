@@ -243,16 +243,21 @@ static ssize_t light_enable_store(struct device *dev,
 }
 
 static ssize_t proximity_enable_store(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t size)
+	struct device_attribute *attr,
+	const char *buf, size_t size)
 {
 	struct gp2a_data *gp2a = dev_get_drvdata(dev);
 	bool new_value;
 
-	if (sysfs_streq(buf, "1"))
+	if (sysfs_streq(buf, "1")) {
 		new_value = true;
-	else if (sysfs_streq(buf, "0"))
+		pr_info("[TOUCHWAKE_PROXIMITY] Turning On\n");
+
+	}
+	else if (sysfs_streq(buf, "0")) {
 		new_value = false;
+		pr_info("[TOUCHWAKE_PROXIMITY] Turning Off\n");
+	}
 	else {
 		pr_err("%s: invalid value %d\n", __func__, *buf);
 		return -EINVAL;
@@ -272,6 +277,7 @@ static ssize_t proximity_enable_store(struct device *dev,
 		gp2a_i2c_write(gp2a, REGS_CYCLE, &reg_defaults[3]);
 		gp2a_i2c_write(gp2a, REGS_OPMOD, &reg_defaults[4]);
 	} else if (!new_value && (gp2a->power_state & PROXIMITY_ENABLED)) {
+
 		disable_irq_wake(gp2a->irq);
 		disable_irq(gp2a->irq);
 		gp2a_i2c_write(gp2a, REGS_OPMOD, &reg_defaults[0]);
