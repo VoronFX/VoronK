@@ -27,6 +27,7 @@
 #include <linux/init.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
+#include <linux/gp2a.h>
 #include <linux/touch_wake.h>
 #include <linux/workqueue.h>
 #include <linux/earlysuspend.h>
@@ -35,7 +36,6 @@
 #include <linux/wakelock.h>
 #include <linux/input.h>
 #include <linux/kmod.h>
-#include <linux/gp2a.h>
 
 extern void touchscreen_enable(void);
 extern void touchscreen_disable(void);
