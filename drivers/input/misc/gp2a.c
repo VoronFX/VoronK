@@ -249,7 +249,9 @@ static ssize_t proximity_enable_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t size)
 {
-	struct gp2a_data *gp2a = dev ? current_device : dev_get_drvdata(dev);
+	pr_info("[TOUCHWAKE_PROXIMITY] NULL %d \n", dev);
+
+	struct gp2a_data *gp2a = (dev == NULL) ? current_device : dev_get_drvdata(dev);
 	bool new_value;
 
 	if (sysfs_streq(buf, "1")) {
@@ -460,6 +462,8 @@ static int gp2a_i2c_probe(struct i2c_client *client,
 
 #ifdef CONFIG_TOUCH_WAKE
 	current_device = gp2a;
+	pr_info("[TOUCHWAKE_PROXIMITY] Curr device %d\n", current_device);
+
 #endif
 
 	gp2a->pdata = pdata;
