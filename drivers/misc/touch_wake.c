@@ -40,6 +40,9 @@
 extern void touchscreen_enable(void);
 extern void touchscreen_disable(void);
 
+extern void enable_for_touchwake(void);
+extern void restore_for_touchwake(void);
+
 static bool touchwake_enabled = false;
 static bool touch_disabled = false;
 static bool device_suspended = false;
@@ -47,7 +50,7 @@ static bool timed_out = true;
 static bool always_wake_enabled = true;
 
 static bool wake_proximitor = true;
-static bool keep_wake_lock = false; // Keep device awakened, may be needed on some devices but not on Galaxy Nexus. Consumes power.
+static bool keep_wake_lock = true; // Keep device awakened, may be needed on some devices but not on Galaxy Nexus. Consumes power.
 
 static unsigned int touchoff_delay = (30 * 1000);
 
