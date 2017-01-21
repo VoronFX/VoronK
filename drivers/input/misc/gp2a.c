@@ -375,7 +375,9 @@ irqreturn_t gp2a_irq_handler(int irq, void *data)
 	/* 0 is close, 1 is far */
 	input_report_abs(ip->proximity_input_dev, ABS_DISTANCE, val);
 	input_sync(ip->proximity_input_dev);
-	wake_lock_timeout(&ip->prx_wake_lock, 3 * HZ);
+	pr_info("[TOUCHWAKE_PROXIMITY] Timeout1 %d", &ip->prx_wake_lock);
+	pr_info("[TOUCHWAKE_PROXIMITY] Timeout2 %d", ip->prx_wake_lock);
+	//wake_lock_timeout(&ip->prx_wake_lock, 3 * HZ);
 	return IRQ_HANDLED;
 }
 
