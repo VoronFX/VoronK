@@ -132,13 +132,13 @@ static void touchwake_early_suspend(struct early_suspend * h)
 			}
 		}
 
-		if (wake_proximitor) {
-			prox_was_enabled = 
-		    char * envp[] = { "HOME=/", NULL };
-			char * argv[] = { "echo 1 > ", NULL };
-			/ sys / devices / virtual / misc /
-			call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
-		}
+		//if (wake_proximitor) {
+		//	prox_was_enabled = 
+		//    char * envp[] = { "HOME=/", NULL };
+		//	char * argv[] = { "echo 1 > ", NULL };
+		//	/ sys / devices / virtual / misc /
+		//	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+		//}
 	}
 	else {
 #ifdef DEBUG_PRINT
