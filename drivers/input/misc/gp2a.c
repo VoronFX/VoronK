@@ -448,6 +448,10 @@ static int gp2a_i2c_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+//#ifdef CONFIG_TOUCH_WAKE
+//	touch_wake_proximity_dev = gp2a;
+//#endif
+
 	gp2a->pdata = pdata;
 	gp2a->i2c_client = client;
 	i2c_set_clientdata(client, gp2a);
