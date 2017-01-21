@@ -134,12 +134,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 		}
 
 		if (wake_proximitor) {
-			touch_wake_proximity_dev->power(true);
-		//	prox_was_enabled = 
-		//    char * envp[] = { "HOME=/", NULL };
-		//	char * argv[] = { "echo 1 > ", NULL };
-		//	/ sys / devices / virtual / misc /
-		//	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
+			enable_for_touchwake();
 		}
 	}
 	else {
@@ -167,6 +162,9 @@ static void touchwake_late_resume(struct early_suspend * h)
 
 	if (touch_disabled)
 		touchwake_enable_touch();
+
+	if (wake_proximitor) 
+		restore_for_touchwake();
 
 	timed_out = true;
 	device_suspended = false;
