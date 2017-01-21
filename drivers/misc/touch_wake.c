@@ -46,7 +46,7 @@ static bool timed_out = true;
 static bool always_wake_enabled = true;
 
 static bool wake_proximitor = true;
-static bool wake_lock = false; // Keep device awakened, may be needed on some devices but not on Galaxy Nexus. Consumes power.
+static bool keep_wake_lock = false; // Keep device awakened, may be needed on some devices but not on Galaxy Nexus. Consumes power.
 static bool use_proximitor = false;
 
 static unsigned int touchoff_delay = (30 * 1000);
@@ -104,7 +104,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 #ifdef DEBUG_PRINT
 				pr_info("[TOUCHWAKE] Early suspend - enable touch delay\n");
 #endif
-			if (wake_lock)
+			if (keep_wake_lock)
 				wake_lock(&touchwake_wake_lock);
 
 				schedule_delayed_work(&touchoff_work, msecs_to_jiffies(touchoff_delay));
@@ -121,7 +121,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 #ifdef DEBUG_PRINT
 				pr_info("[TOUCHWAKE] Early suspend - keep touch enabled indefinately\n");
 #endif
-				if (wake_lock)
+				if (keep_wake_lock)
 					wake_lock(&touchwake_wake_lock);
 			}
 			else {
@@ -160,7 +160,7 @@ static void touchwake_late_resume(struct early_suspend * h)
 	cancel_delayed_work(&touchoff_work);
 	flush_scheduled_work();
 
-	if (wake_lock)
+	if (keep_wake_lock)
 		wake_unlock(&touchwake_wake_lock);
 
 	if (touch_disabled)
@@ -181,7 +181,7 @@ static struct early_suspend touchwake_suspend_data =
 static void touchwake_touchoff(struct work_struct * touchoff_work)
 {
 	touchwake_disable_touch();
-	if (wake_lock)
+	if (keep_wake_lock)
 		wake_unlock(&touchwake_wake_lock);
 	return;
 }
@@ -453,7 +453,7 @@ static int __init touchwake_control_init(void)
 	register_early_suspend(&touchwake_suspend_data);
 	do_gettimeofday(&last_powerkeypress);
 
-	if (wake_lock)
+	if (keep_wake_lock)
 		wake_lock_init(&touchwake_wake_lock, WAKE_LOCK_SUSPEND, "touchwake_wake");
 	return 0;
 }
