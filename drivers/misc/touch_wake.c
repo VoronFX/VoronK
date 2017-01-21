@@ -354,19 +354,20 @@ EXPORT_SYMBOL(proximity_detected);
 
 void proximity_off(void)
 {
-	prox_near = false;
 
 #ifdef DEBUG_PRINT
 	pr_info("[TOUCHWAKE] Proximity far event\n");
 #endif
 
-	if (wake_proximitor && device_suspended)
+	if (prox_near && wake_proximitor && device_suspended)
 	{
 #ifdef DEBUG_PRINT
 		pr_info("[TOUCHWAKE] Waking by proximitor\n");
 #endif
 		touch_press(true);
 	}
+
+	prox_near = false;
 	return;
 }
 EXPORT_SYMBOL(proximity_off);

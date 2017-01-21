@@ -677,11 +677,13 @@ void enable_for_touchwake(void) {
 	proximity_enable_store(NULL, NULL, "1", 1);
 	forced_by_touch_wake = true;
 }
+EXPORT_SYMBOL(enable_for_touchwake);
 
 void restore_for_touchwake(void) {
 	forced_by_touch_wake = false;
 	proximity_enable_store(NULL, NULL, proximity_last_state ? "1" : "0", 1);
 }
+EXPORT_SYMBOL(restore_for_touchwake);
 #endif
 
 module_init(gp2a_init);
