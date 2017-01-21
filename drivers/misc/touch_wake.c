@@ -67,7 +67,7 @@ static struct timeval touch_begin;
 
 #define TOUCHWAKE_VERSION 2
 #define TIME_LONGPRESS 500
-#define TIME_LONGTOUCH 250
+#define TIME_LONGTOUCH 300
 #define POWERPRESS_DELAY 50
 
 #define DEBUG_PRINT
@@ -135,7 +135,6 @@ static void touchwake_early_suspend(struct early_suspend * h)
 		if (wake_proximitor) {
 			enable_for_touchwake();
 		}
-		first_touch = true;
 	}
 	else {
 #ifdef DEBUG_PRINT
@@ -407,8 +406,8 @@ void touch_press(bool up)
 
 	if (likely(touchwake_enabled)) {
 		if (unlikely(device_suspended && mutex_trylock(&lock))) {
-			if (up)
-				first_touch = false;
+			if (!up)
+				first_touch = true;
 			do_gettimeofday(&touch_begin);
 			schedule_work(&presspower_work);
 		}
