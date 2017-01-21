@@ -39,13 +39,13 @@
 struct gp2a_data *current_device;
 bool laststate;
 
-static void enable_for_touchwake(void) {
+void enable_for_touchwake(void) {
 	laststate = current_device->power_state & PROXIMITY_ENABLED;
-	ssize_t light_enable_store(NULL, NULL, "1", 1);
+	light_enable_store(NULL, NULL, "1", 1);
 }
 
-static void restore_for_touchwake(void) {
-	ssize_t light_enable_store(NULL, NULL, laststate ? "1" : "0", 1);
+void restore_for_touchwake(void) {
+	light_enable_store(NULL, NULL, laststate ? "1" : "0", 1);
 }
 #endif
 
