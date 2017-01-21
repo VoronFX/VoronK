@@ -60,7 +60,7 @@ static struct timeval last_powerkeypress;
 #define POWERPRESS_DELAY 100
 #define POWERPRESS_TIMEOUT 1000
 
-// #define DEBUG_PRINT
+#define DEBUG_PRINT
 
 static void touchwake_disable_touch(void)
 {
