@@ -104,17 +104,6 @@ struct gp2a_data {
 	struct workqueue_struct *wq;
 };
 
-#ifdef CONFIG_TOUCH_WAKE
-void enable_for_touchwake(void) {
-	laststate = current_device->power_state & PROXIMITY_ENABLED;
-	proximity_enable_store(NULL, NULL, "1", 1);
-}
-
-void restore_for_touchwake(void) {
-	proximity_enable_store(NULL, NULL, laststate ? "1" : "0", 1);
-}
-#endif
-
 int gp2a_i2c_write(struct gp2a_data *gp2a, u8 reg, u8 *val)
 {
 	int err = 0;
@@ -667,6 +656,17 @@ static void __exit gp2a_exit(void)
 {
 	i2c_del_driver(&gp2a_i2c_driver);
 }
+
+#ifdef CONFIG_TOUCH_WAKE
+void enable_for_touchwake(void) {
+	laststate = current_device->power_state & PROXIMITY_ENABLED;
+	proximity_enable_store(NULL, NULL, "1", 1);
+}
+
+void restore_for_touchwake(void) {
+	proximity_enable_store(NULL, NULL, laststate ? "1" : "0", 1);
+}
+#endif
 
 module_init(gp2a_init);
 module_exit(gp2a_exit);
