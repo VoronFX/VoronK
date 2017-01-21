@@ -55,7 +55,6 @@ static unsigned int touchoff_delay = (30 * 1000);
 static bool prox_was_enabled = false;
 static bool prox_near = false;
 
-static gp2a_platform_data *touch_wake_proximity_dev;
 static void touchwake_touchoff(struct work_struct * touchoff_work);
 static DECLARE_DELAYED_WORK(touchoff_work, touchwake_touchoff);
 static void press_powerkey(struct work_struct * presspower_work);
