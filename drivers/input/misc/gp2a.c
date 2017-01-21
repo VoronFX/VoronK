@@ -38,15 +38,6 @@
 #include <linux/touch_wake.h>
 struct gp2a_data *current_device;
 bool laststate;
-
-void enable_for_touchwake(void) {
-	laststate = current_device->power_state & PROXIMITY_ENABLED;
-	light_enable_store(NULL, NULL, "1", 1);
-}
-
-void restore_for_touchwake(void) {
-	light_enable_store(NULL, NULL, laststate ? "1" : "0", 1);
-}
 #endif
 
 /* Note about power vs enable/disable:
@@ -112,6 +103,17 @@ struct gp2a_data {
 	struct wake_lock prx_wake_lock;
 	struct workqueue_struct *wq;
 };
+
+#ifdef CONFIG_TOUCH_WAKE
+void enable_for_touchwake(void) {
+	laststate = current_device->power_state & PROXIMITY_ENABLED;
+	proximity_enable_store(NULL, NULL, "1", 1);
+}
+
+void restore_for_touchwake(void) {
+	proximity_enable_store(NULL, NULL, laststate ? "1" : "0", 1);
+}
+#endif
 
 int gp2a_i2c_write(struct gp2a_data *gp2a, u8 reg, u8 *val)
 {
