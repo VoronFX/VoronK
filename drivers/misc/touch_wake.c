@@ -35,6 +35,7 @@
 #include <linux/wakelock.h>
 #include <linux/input.h>
 #include <linux/kmod.h>
+#include <linux/gp2a.h>
 
 extern void touchscreen_enable(void);
 extern void touchscreen_disable(void);
@@ -54,7 +55,7 @@ static unsigned int touchoff_delay = (30 * 1000);
 static bool prox_was_enabled = false;
 static bool prox_near = false;
 
-//struct gp2a_data *touch_wake_proximity_dev;
+static gp2a_platform_data *touch_wake_proximity_dev;
 static void touchwake_touchoff(struct work_struct * touchoff_work);
 static DECLARE_DELAYED_WORK(touchoff_work, touchwake_touchoff);
 static void press_powerkey(struct work_struct * presspower_work);
@@ -132,13 +133,14 @@ static void touchwake_early_suspend(struct early_suspend * h)
 			}
 		}
 
-		//if (wake_proximitor) {
+		if (wake_proximitor) {
+			touch_wake_proximity_dev->power(true);
 		//	prox_was_enabled = 
 		//    char * envp[] = { "HOME=/", NULL };
 		//	char * argv[] = { "echo 1 > ", NULL };
 		//	/ sys / devices / virtual / misc /
 		//	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_EXEC);
-		//}
+		}
 	}
 	else {
 #ifdef DEBUG_PRINT
