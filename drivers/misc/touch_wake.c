@@ -187,6 +187,8 @@ static void touchwake_touchoff(struct work_struct * touchoff_work)
 
 static void press_powerkey(struct work_struct * presspower_work)
 {
+	mutex_lock(&lock)
+
 	input_event(powerkey_device, EV_KEY, KEY_POWER, 1);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
@@ -405,7 +407,10 @@ void touch_press(bool up)
 #endif
 
 	if (likely(touchwake_enabled)) {
-		if (unlikely(device_suspended && mutex_trylock(&lock))) {
+
+		if (unlikely(device_suspended)) {
+			device_suspended = false;
+
 			if (!up)
 				first_touch = true;
 			do_gettimeofday(&touch_begin);
@@ -421,7 +426,7 @@ void touch_press(bool up)
 			time_pressed = (now.tv_sec - touch_begin.tv_sec) * MSEC_PER_SEC +
 				(now.tv_usec - touch_begin.tv_usec) / USEC_PER_MSEC;
 
-			if (time_pressed > TIME_LONGTOUCH && mutex_trylock(&lock))
+			if (time_pressed > TIME_LONGTOUCH)
 				schedule_work(&presspower_work);
 		}
 	}
