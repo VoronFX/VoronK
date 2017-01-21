@@ -68,7 +68,8 @@ static struct timeval last_powerkeypress;
 static struct timeval touch_begin;
 
 #define TOUCHWAKE_VERSION 2
-#define TIME_LONGPRESS 400
+#define TIME_LONGPRESS 500
+#define TIME_LONGTOUCH 250
 #define POWERPRESS_DELAY 100
 #define POWERPRESS_TIMEOUT 1000
 
@@ -426,7 +427,7 @@ void touch_press(bool up)
 			time_pressed = (now.tv_sec - touch_begin.tv_sec) * MSEC_PER_SEC +
 				(now.tv_usec - touch_begin.tv_usec) / USEC_PER_MSEC;
 
-			if (time_pressed > TIME_LONGPRESS && mutex_trylock(&lock))
+			if (time_pressed > TIME_LONGTOUCH && mutex_trylock(&lock))
 				schedule_work(&presspower_work);
 		}
 	}
