@@ -48,13 +48,11 @@ static bool always_wake_enabled = true;
 
 static bool wake_proximitor = true;
 static bool keep_wake_lock = false; // Keep device awakened, may be needed on some devices but not on Galaxy Nexus. Consumes power.
-static bool use_proximitor = false;
 
 static unsigned int touchoff_delay = (30 * 1000);
 
-static bool prox_was_enabled = false;
 static bool prox_near = false;
-static bool in_touch = false;
+static bool first_touch = false;
 
 static void touchwake_touchoff(struct work_struct * touchoff_work);
 static DECLARE_DELAYED_WORK(touchoff_work, touchwake_touchoff);
@@ -70,8 +68,7 @@ static struct timeval touch_begin;
 #define TOUCHWAKE_VERSION 2
 #define TIME_LONGPRESS 500
 #define TIME_LONGTOUCH 250
-#define POWERPRESS_DELAY 100
-#define POWERPRESS_TIMEOUT 1000
+#define POWERPRESS_DELAY 50
 
 #define DEBUG_PRINT
 
@@ -103,7 +100,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 
 	if (touchwake_enabled) {
 		if (!always_wake_enabled && likely(touchoff_delay > 0)) {
-			if (timed_out && (!prox_near || !use_proximitor)) {
+			if (timed_out) {
 #ifdef DEBUG_PRINT
 				pr_info("[TOUCHWAKE] Early suspend - enable touch delay\n");
 #endif
@@ -120,7 +117,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 			}
 		}
 		else {
-			if (timed_out && (!prox_near || !use_proximitor)) {
+			if (timed_out) {
 #ifdef DEBUG_PRINT
 				pr_info("[TOUCHWAKE] Early suspend - keep touch enabled indefinately\n");
 #endif
@@ -138,6 +135,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 		if (wake_proximitor) {
 			enable_for_touchwake();
 		}
+		first_touch = true;
 	}
 	else {
 #ifdef DEBUG_PRINT
@@ -197,8 +195,6 @@ static void press_powerkey(struct work_struct * presspower_work)
 	input_event(powerkey_device, EV_KEY, KEY_POWER, 0);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
-
-	msleep(POWERPRESS_TIMEOUT);
 
 	mutex_unlock(&lock);
 
@@ -355,10 +351,8 @@ void proximity_off(void)
 	pr_info("[TOUCHWAKE] Proximity disabled\n");
 #endif
 
-	if (device_suspended && !in_touch && wake_proximitor) {
-		in_touch = true;
+	if (wake_proximitor && device_suspended)
 		touch_press(true);
-	}
 	return;
 }
 EXPORT_SYMBOL(proximity_off);
@@ -412,13 +406,14 @@ void touch_press(bool up)
 #endif
 
 	if (likely(touchwake_enabled)) {
-		if (unlikely(device_suspended && (!prox_near || !use_proximitor) && mutex_trylock(&lock))) {
-			in_touch = true;
+		if (unlikely(device_suspended && mutex_trylock(&lock))) {
+			if (up)
+				first_touch = false;
 			do_gettimeofday(&touch_begin);
 			schedule_work(&presspower_work);
 		}
-		else if (up && in_touch) {
-			in_touch = false;
+		else if (up && first_touch)) {
+			first_touch = false;
 
 			struct timeval now;
 			int time_pressed;
