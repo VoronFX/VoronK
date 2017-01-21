@@ -568,6 +568,7 @@ static int mms_ts_enable(struct mms_ts_info *info)
 	usleep_range(3000, 5000);
 	info->enabled = true;
 	enable_irq(info->irq);
+	enable_irq_wake(info->irq);
 out:
 	mutex_unlock(&info->lock);
 	return 0;
@@ -578,6 +579,7 @@ static int mms_ts_disable(struct mms_ts_info *info)
 	mutex_lock(&info->lock);
 	if (!info->enabled)
 		goto out;
+	disable_irq_wake(info->irq);
 	disable_irq(info->irq);
 	i2c_smbus_write_byte_data(info->client, MMS_MODE_CONTROL, 0);
 	usleep_range(10000, 12000);
