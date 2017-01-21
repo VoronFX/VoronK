@@ -14,7 +14,7 @@ int get_touchoff_delay(void);
 bool device_is_suspended(void);
 void set_powerkeydev(struct input_dev * input_device);
 
-static void enable_for_touchwake(void);
-static void restore_for_touchwake(void);
+void enable_for_touchwake(void);
+void restore_for_touchwake(void);
 
 #endif
