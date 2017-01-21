@@ -188,11 +188,16 @@ static void touchwake_touchoff(struct work_struct * touchoff_work)
 static void press_powerkey(struct work_struct * presspower_work)
 {
 	mutex_lock(&lock);
-
+#ifdef DEBUG_PRINT
+	pr_info("[TOUCHWAKE] Emulating power press\n");
+#endif
 	input_event(powerkey_device, EV_KEY, KEY_POWER, 1);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
 
+#ifdef DEBUG_PRINT
+	pr_info("[TOUCHWAKE] Emulating power release\n");
+#endif
 	input_event(powerkey_device, EV_KEY, KEY_POWER, 0);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
@@ -337,7 +342,7 @@ void proximity_detected(void)
 {
 	prox_near = true;
 #ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Proximity enabled\n");
+	pr_info("[TOUCHWAKE] Proximity near event\n");
 #endif
 
 	return;
@@ -349,11 +354,16 @@ void proximity_off(void)
 	prox_near = false;
 
 #ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Proximity disabled\n");
+	pr_info("[TOUCHWAKE] Proximity far event\n");
 #endif
 
 	if (wake_proximitor && device_suspended)
+	{
+#ifdef DEBUG_PRINT
+		pr_info("[TOUCHWAKE] Waking by proximitor\n");
+#endif
 		touch_press(true);
+	}
 	return;
 }
 EXPORT_SYMBOL(proximity_off);
@@ -392,7 +402,7 @@ void powerkey_released(void)
 #ifdef DEBUG_PRINT
 	}
 	else {
-		pr_info("[TOUCHWAKE] Device being turned off\n");
+		pr_info("[TOUCHWAKE] Device shortpress detected released\n");
 #endif
 	}
 
@@ -410,7 +420,9 @@ void touch_press(bool up)
 
 		if (unlikely(device_suspended)) {
 			device_suspended = false;
-
+#ifdef DEBUG_PRINT
+			pr_info("[TOUCHWAKE] Got toch in suspended, awakening, Up = %d\n", up);
+#endif
 			if (!up)
 				first_touch = true;
 			do_gettimeofday(&touch_begin);
@@ -427,7 +439,17 @@ void touch_press(bool up)
 				(now.tv_usec - touch_begin.tv_usec) / USEC_PER_MSEC;
 
 			if (time_pressed > TIME_LONGTOUCH)
+			{
+#ifdef DEBUG_PRINT
+				pr_info("[TOUCHWAKE] Got long first touch up, resleeping, touchtime = %d\n", time_pressed);
+#endif
 				schedule_work(&presspower_work);
+			}
+			else {
+#ifdef DEBUG_PRINT
+				pr_info("[TOUCHWAKE] Got short first touch up, touchtime = %d\n", time_pressed);
+#endif
+			}
 		}
 	}
 
