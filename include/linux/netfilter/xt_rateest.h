@@ -3,6 +3,15 @@
 
 #include <linux/types.h>
 
+struct xt_rateest_target_info {
+	char			name[IFNAMSIZ];
+	__s8			interval;
+	__u8		ewma_log;
+
+	/* Used internally by the kernel */
+	struct xt_rateest	*est __attribute__((aligned(8)));
+};
+
 enum xt_rateest_match_flags {
 	XT_RATEEST_MATCH_INVERT	= 1<<0,
 	XT_RATEEST_MATCH_ABS	= 1<<1,
