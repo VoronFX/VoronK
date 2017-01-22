@@ -111,38 +111,21 @@ static void touchwake_early_suspend(struct early_suspend * h)
 #endif
 
 	if (touchwake_enabled) {
-		if (!always_wake_enabled && likely(touchoff_delay > 0)) {
-			if (timed_out) {
-#ifdef DEBUG_PRINT
-				pr_info("[TOUCHWAKE] Early suspend - enable touch delay\n");
-#endif
-				if (keep_wake_lock)
-					wake_lock(&touchwake_wake_lock);
 
-				schedule_delayed_work(&touchoff_work, msecs_to_jiffies(touchoff_delay));
-			}
-			else {
+		if (timed_out && (mode & TOUCH_WAKE_BIT)) {
 #ifdef DEBUG_PRINT
-				pr_info("[TOUCHWAKE] Early suspend - disable touch immediately\n");
+			pr_info("[TOUCHWAKE] Early suspend - keep touch enabled indefinately\n");
 #endif
-				touchwake_disable_touch();
-			}
+			if (keep_wake_lock)
+				wake_lock(&touchwake_wake_lock);
 		}
 		else {
-			if (timed_out && (mode & TOUCH_WAKE_BIT)) {
 #ifdef DEBUG_PRINT
-				pr_info("[TOUCHWAKE] Early suspend - keep touch enabled indefinately\n");
+			pr_info("[TOUCHWAKE] Early suspend - disable touch immediately (indefinate mode)\n");
 #endif
-				if (keep_wake_lock)
-					wake_lock(&touchwake_wake_lock);
-			}
-			else {
-#ifdef DEBUG_PRINT
-				pr_info("[TOUCHWAKE] Early suspend - disable touch immediately (indefinate mode)\n");
-#endif
-				touchwake_disable_touch();
-			}
+			touchwake_disable_touch();
 		}
+
 
 		if ((mode & PROXIMITY_WAKE_BIT)) {
 			enable_for_touchwake();
