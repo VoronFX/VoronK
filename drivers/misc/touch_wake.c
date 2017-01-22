@@ -56,7 +56,7 @@ enum
 	LONGTOUCH_SLEEP_WAKE_BIT = 0x04
 };
 
-static int mode = TOUCH_WAKE_BIT | PROXIMITY_WAKE_BIT | LONGTOUCH_SLEEP_WAKE_BIT;
+static unsigned int mode = TOUCH_WAKE_BIT | PROXIMITY_WAKE_BIT | LONGTOUCH_SLEEP_WAKE_BIT;
 
 static bool keep_wake_lock = false;
 // Keep device awakened, may be needed on some devices but not on Galaxy Nexus. Consumes power.
@@ -243,7 +243,7 @@ static ssize_t touchwake_status_write(struct device * dev, struct device_attribu
 
 static ssize_t touchwake_delay_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
-	return sprintf(buf, "%u\n", mode);
+	return sprintf(buf, "%u\n", mode * 1000);
 }
 
 static ssize_t touchwake_delay_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
@@ -251,7 +251,7 @@ static ssize_t touchwake_delay_write(struct device * dev, struct device_attribut
 	unsigned int data;
 
 	if (sscanf(buf, "%u\n", &data) == 1) {
-		mode = data;
+		mode = data / 1000;
 #ifdef DEBUG_PRINT
 		pr_info("[TOUCHWAKE] Mode set to %u\n", mode);
 #endif
