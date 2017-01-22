@@ -22,6 +22,13 @@
 * Bumped version to 1.1a
 *
 *  		                           Jean-Pierre Rasquin <yank555.lu@gmail.com>
+*
+* --------------------------------------------------------------------------------------
+*
+* Modified and improved.
+*
+*
+*  		                           Voronin Igor <Voron.exe@gmail.com>
 */
 
 #include <linux/init.h>
