@@ -212,7 +212,7 @@ static void press_powerkey(struct work_struct * presspower_work)
 
 static ssize_t always_wake_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
-	return sprintf(buf, "%u\n", (always_wake_enabled ? 1 : 0));
+	return sprintf(buf, "%u\n", (wake_proximitor ? 1 : 0));
 }
 
 static ssize_t always_wake_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
