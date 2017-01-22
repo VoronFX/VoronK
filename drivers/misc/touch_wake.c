@@ -73,7 +73,7 @@ static struct timeval touch_begin;
 #define TIME_LONGTOUCH 300
 #define POWERPRESS_DELAY 50
 
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 static void touchwake_disable_touch(void)
 {
@@ -226,12 +226,12 @@ static ssize_t always_wake_write(struct device * dev, struct device_attribute * 
 		if (data == 1)
 		{
 			pr_info("%s: Always wake enabled\n", __FUNCTION__);
-			always_wake_enabled = true;
+			wake_proximitor = true;
 		}
 		else if (data == 0)
 		{
 			pr_info("%s: Always wake disabled\n", __FUNCTION__);
-			always_wake_enabled = false;
+			wake_proximitor = false;
 		}
 		else
 		{
