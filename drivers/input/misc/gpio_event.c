@@ -1,17 +1,17 @@
 /* drivers/input/misc/gpio_event.c
- *
- * Copyright (C) 2007 Google, Inc.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+*
+* Copyright (C) 2007 Google, Inc.
+*
+* This software is licensed under the terms of the GNU General Public
+* License version 2, as published by the Free Software Foundation, and
+* may be copied, distributed, and modified under those terms.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+*/
 
 #include <linux/earlysuspend.h>
 #include <linux/module.h>
@@ -53,8 +53,8 @@ static int gpio_input_event(
 	for (i = 0, ii = ip->info->info; i < ip->info->info_count; i++, ii++) {
 		if ((*ii)->event) {
 			tmp_ret = (*ii)->event(ip->input_devs, *ii,
-						&ip->state[i],
-						devnr, type, code, value);
+				&ip->state[i],
+				devnr, type, code, value);
 			if (tmp_ret)
 				ret = tmp_ret;
 		}
@@ -80,7 +80,7 @@ static int gpio_event_call_all_func(struct gpio_event *ip, int func)
 			if (func == GPIO_EVENT_FUNC_RESUME && (*ii)->no_suspend)
 				continue;
 			ret = (*ii)->func(ip->input_devs, *ii, &ip->state[i],
-					  func);
+				func);
 			if (ret) {
 				pr_err("gpio_event_probe: function failed\n");
 				goto err_func_failed;
@@ -98,8 +98,8 @@ static int gpio_event_call_all_func(struct gpio_event *ip, int func)
 		if ((func & ~1) == GPIO_EVENT_FUNC_SUSPEND && (*ii)->no_suspend)
 			continue;
 		(*ii)->func(ip->input_devs, *ii, &ip->state[i], func & ~1);
-err_func_failed:
-err_no_func:
+	err_func_failed:
+	err_no_func:
 		;
 	}
 	return ret;
@@ -138,7 +138,7 @@ static int gpio_event_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 	if ((!event_info->name && !event_info->names[0]) ||
-	    !event_info->info || !event_info->info_count) {
+		!event_info->info || !event_info->info_count) {
 		pr_err("gpio_event_probe: Incomplete pdata\n");
 		return -ENODEV;
 	}
@@ -146,9 +146,9 @@ static int gpio_event_probe(struct platform_device *pdev)
 		while (event_info->names[dev_count])
 			dev_count++;
 	ip = kzalloc(sizeof(*ip) +
-		     sizeof(ip->state[0]) * event_info->info_count +
-		     sizeof(*ip->input_devs) +
-		     sizeof(ip->input_devs->dev[0]) * dev_count, GFP_KERNEL);
+		sizeof(ip->state[0]) * event_info->info_count +
+		sizeof(*ip->input_devs) +
+		sizeof(ip->input_devs->dev[0]) * dev_count, GFP_KERNEL);
 	if (ip == NULL) {
 		err = -ENOMEM;
 		pr_err("gpio_event_probe: Failed to allocate private data\n");
@@ -167,7 +167,7 @@ static int gpio_event_probe(struct platform_device *pdev)
 		}
 		input_set_drvdata(input_dev, ip);
 		input_dev->name = event_info->name ?
-					event_info->name : event_info->names[i];
+			event_info->name : event_info->names[i];
 		input_dev->event = gpio_input_event;
 		ip->input_devs->dev[i] = input_dev;
 #ifdef CONFIG_TOUCH_WAKE
@@ -220,7 +220,7 @@ err_call_all_func_failed:
 		input_unregister_device(ip->input_devs->dev[i]);
 	for (i = dev_count - 1; i >= registered; i--) {
 		input_free_device(ip->input_devs->dev[i]);
-err_input_dev_alloc_failed:
+	err_input_dev_alloc_failed:
 		;
 	}
 	kfree(ip);
@@ -247,11 +247,11 @@ static int gpio_event_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver gpio_event_driver = {
-	.probe		= gpio_event_probe,
-	.remove		= gpio_event_remove,
-	.driver		= {
-		.name	= GPIO_EVENT_DEV_NAME,
-	},
+	.probe = gpio_event_probe,
+	.remove = gpio_event_remove,
+	.driver = {
+	.name = GPIO_EVENT_DEV_NAME,
+},
 };
 
 static int __devinit gpio_event_init(void)
