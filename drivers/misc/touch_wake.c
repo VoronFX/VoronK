@@ -51,8 +51,8 @@ static bool timed_out = true;
 
 enum
 {
-	TOUCH_WAKE_BIT = 0x01
-	PROXIMITY_WAKE_BIT = 0x02
+	TOUCH_WAKE_BIT = 0x01,
+	PROXIMITY_WAKE_BIT = 0x02,
 	LONGTOUCH_SLEEP_WAKE_BIT = 0x04
 };
 
