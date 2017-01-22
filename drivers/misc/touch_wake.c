@@ -56,7 +56,7 @@ enum
 	LONGTOUCH_SLEEP_WAKE_BIT = 0x04
 };
 
-static int mode = 0;
+static int mode = TOUCH_WAKE_BIT | PROXIMITY_WAKE_BIT | LONGTOUCH_SLEEP_WAKE_BIT;
 
 static bool keep_wake_lock = false;
 // Keep device awakened, may be needed on some devices but not on Galaxy Nexus. Consumes power.
