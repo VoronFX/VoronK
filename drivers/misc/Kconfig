@@ -603,8 +603,14 @@ source "drivers/misc/cache-2dmanager/Kconfig"
 
 config COLOR_CONTROL
 	bool "Support for Color Control"
-	default n
+	default y
 	help
 	  Say Y here to enable Color Control
+
+config TOUCH_WAKE
+	bool "Support for Touch Wake"
+	default y
+	help
+	  Say Y here to enable Touch Wake
 
 endif # MISC_DEVICES

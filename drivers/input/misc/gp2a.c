@@ -34,6 +34,12 @@
 #include <linux/uaccess.h>
 #include <linux/gp2a.h>
 
+#ifdef CONFIG_TOUCH_WAKE
+#include <linux/touch_wake.h>
+bool proximity_last_state;
+bool forced_by_touch_wake;
+#endif
+struct gp2a_data *current_device;
 
 /* Note about power vs enable/disable:
  *  The chip has two functions, proximity and ambient light sensing.
@@ -52,7 +58,7 @@
 
 #define gp2a_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args)
 
-/* ADDSEL is LOW */
+ /* ADDSEL is LOW */
 #define REGS_PROX		0x0 /* Read  Only */
 #define REGS_GAIN		0x1 /* Write Only */
 #define REGS_HYS		0x2 /* Write Only */
@@ -130,14 +136,14 @@ int gp2a_i2c_write(struct gp2a_data *gp2a, u8 reg, u8 *val)
 static void gp2a_light_enable(struct gp2a_data *gp2a)
 {
 	gp2a_dbgmsg("starting poll timer, delay %lldns\n",
-		    ktime_to_ns(gp2a->light_poll_delay));
+		ktime_to_ns(gp2a->light_poll_delay));
 	/*
 	 * Set far out of range ABS_MISC value, -1024, to enable real value to
 	 * go through next.
 	 */
 	input_abs_set_val(gp2a->light_input_dev, ABS_MISC, -1024);
 	hrtimer_start(&gp2a->timer, ktime_set(0, LIGHT_SENSOR_START_TIME_DELAY),
-					HRTIMER_MODE_REL);
+		HRTIMER_MODE_REL);
 }
 
 static void gp2a_light_disable(struct gp2a_data *gp2a)
@@ -148,7 +154,7 @@ static void gp2a_light_disable(struct gp2a_data *gp2a)
 }
 
 static ssize_t poll_delay_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct gp2a_data *gp2a = dev_get_drvdata(dev);
 	return sprintf(buf, "%lld\n", ktime_to_ns(gp2a->light_poll_delay));
@@ -156,8 +162,8 @@ static ssize_t poll_delay_show(struct device *dev,
 
 
 static ssize_t poll_delay_store(struct device *dev,
-				struct device_attribute *attr,
-				const char *buf, size_t size)
+	struct device_attribute *attr,
+	const char *buf, size_t size)
 {
 	struct gp2a_data *gp2a = dev_get_drvdata(dev);
 	int64_t new_delay;
@@ -168,7 +174,7 @@ static ssize_t poll_delay_store(struct device *dev,
 		return err;
 
 	gp2a_dbgmsg("new delay = %lldns, old delay = %lldns\n",
-		    new_delay, ktime_to_ns(gp2a->light_poll_delay));
+		new_delay, ktime_to_ns(gp2a->light_poll_delay));
 
 	if (new_delay < DELAY_LOWBOUND) {
 		gp2a_dbgmsg("new delay less than low bound, so set delay "
@@ -190,24 +196,24 @@ static ssize_t poll_delay_store(struct device *dev,
 }
 
 static ssize_t light_enable_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct gp2a_data *gp2a = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n",
-		       (gp2a->power_state & LIGHT_ENABLED) ? 1 : 0);
+		(gp2a->power_state & LIGHT_ENABLED) ? 1 : 0);
 }
 
 static ssize_t proximity_enable_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct gp2a_data *gp2a = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n",
-		       (gp2a->power_state & PROXIMITY_ENABLED) ? 1 : 0);
+		(gp2a->power_state & PROXIMITY_ENABLED) ? 1 : 0);
 }
 
 static ssize_t light_enable_store(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t size)
+	struct device_attribute *attr,
+	const char *buf, size_t size)
 {
 	struct gp2a_data *gp2a = dev_get_drvdata(dev);
 	bool new_value;
@@ -223,13 +229,14 @@ static ssize_t light_enable_store(struct device *dev,
 
 	mutex_lock(&gp2a->power_lock);
 	gp2a_dbgmsg("new_value = %d, old state = %d\n",
-		    new_value, (gp2a->power_state & LIGHT_ENABLED) ? 1 : 0);
+		new_value, (gp2a->power_state & LIGHT_ENABLED) ? 1 : 0);
 	if (new_value && !(gp2a->power_state & LIGHT_ENABLED)) {
 		if (!gp2a->power_state)
 			gp2a->pdata->power(true);
 		gp2a->power_state |= LIGHT_ENABLED;
 		gp2a_light_enable(gp2a);
-	} else if (!new_value && (gp2a->power_state & LIGHT_ENABLED)) {
+	}
+	else if (!new_value && (gp2a->power_state & LIGHT_ENABLED)) {
 		gp2a_light_disable(gp2a);
 		gp2a->power_state &= ~LIGHT_ENABLED;
 		if (!gp2a->power_state)
@@ -240,24 +247,40 @@ static ssize_t light_enable_store(struct device *dev,
 }
 
 static ssize_t proximity_enable_store(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t size)
+	struct device_attribute *attr,
+	const char *buf, size_t size)
 {
-	struct gp2a_data *gp2a = dev_get_drvdata(dev);
 	bool new_value;
 
-	if (sysfs_streq(buf, "1"))
+	if (sysfs_streq(buf, "1")) {
 		new_value = true;
-	else if (sysfs_streq(buf, "0"))
+#ifdef DEBUG_PRINT
+		pr_info("[TOUCHWAKE_PROXIMITY] Turning On\n");
+#endif
+	}
+	else if (sysfs_streq(buf, "0")) {
 		new_value = false;
+#ifdef DEBUG_PRINT
+		pr_info("[TOUCHWAKE_PROXIMITY] Turning Off\n");
+#endif
+	}
 	else {
 		pr_err("%s: invalid value %d\n", __func__, *buf);
 		return -EINVAL;
 	}
 
+#ifdef DEBUG_PRINT
+	if (forced_by_touch_wake) {
+		proximity_last_state = new_value;
+		return;
+	}
+#endif
+
+	struct gp2a_data *gp2a = (dev == NULL) ? current_device : dev_get_drvdata(dev);
+
 	mutex_lock(&gp2a->power_lock);
 	gp2a_dbgmsg("new_value = %d, old state = %d\n",
-		    new_value, (gp2a->power_state & PROXIMITY_ENABLED) ? 1 : 0);
+		new_value, (gp2a->power_state & PROXIMITY_ENABLED) ? 1 : 0);
 	if (new_value && !(gp2a->power_state & PROXIMITY_ENABLED)) {
 		if (!gp2a->power_state)
 			gp2a->pdata->power(true);
@@ -268,7 +291,9 @@ static ssize_t proximity_enable_store(struct device *dev,
 		gp2a_i2c_write(gp2a, REGS_HYS, &reg_defaults[2]);
 		gp2a_i2c_write(gp2a, REGS_CYCLE, &reg_defaults[3]);
 		gp2a_i2c_write(gp2a, REGS_OPMOD, &reg_defaults[4]);
-	} else if (!new_value && (gp2a->power_state & PROXIMITY_ENABLED)) {
+	}
+	else if (!new_value && (gp2a->power_state & PROXIMITY_ENABLED)) {
+
 		disable_irq_wake(gp2a->irq);
 		disable_irq(gp2a->irq);
 		gp2a_i2c_write(gp2a, REGS_OPMOD, &reg_defaults[0]);
@@ -281,15 +306,15 @@ static ssize_t proximity_enable_store(struct device *dev,
 }
 
 static DEVICE_ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
-		   poll_delay_show, poll_delay_store);
+	poll_delay_show, poll_delay_store);
 
 static struct device_attribute dev_attr_light_enable =
-	__ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
-	       light_enable_show, light_enable_store);
+__ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
+	light_enable_show, light_enable_store);
 
 static struct device_attribute dev_attr_proximity_enable =
-	__ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
-	       proximity_enable_show, proximity_enable_store);
+__ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
+	proximity_enable_show, proximity_enable_store);
 
 static struct attribute *light_sysfs_attrs[] = {
 	&dev_attr_light_enable.attr,
@@ -313,7 +338,7 @@ static struct attribute_group proximity_attribute_group = {
 static void gp2a_work_func_light(struct work_struct *work)
 {
 	struct gp2a_data *gp2a = container_of(work, struct gp2a_data,
-					      work_light);
+		work_light);
 	int adc = gp2a->pdata->light_adc_value();
 	if (adc < 0) {
 		pr_err("adc returned error %d\n", adc);
@@ -348,10 +373,22 @@ irqreturn_t gp2a_irq_handler(int irq, void *data)
 
 	gp2a_dbgmsg("gp2a: proximity val=%d\n", val);
 
+#ifdef CONFIG_TOUCH_WAKE
+	if (!val) { // 0 is close = proximity detected
+		proximity_detected();
+	}
+	else {
+		proximity_off();
+	}
+#endif
+
 	/* 0 is close, 1 is far */
 	input_report_abs(ip->proximity_input_dev, ABS_DISTANCE, val);
 	input_sync(ip->proximity_input_dev);
-	wake_lock_timeout(&ip->prx_wake_lock, 3*HZ);
+#ifdef DEBUG_PRINT
+	if (!forced_by_touch_wake)
+#endif
+		wake_lock_timeout(&ip->prx_wake_lock, 3 * HZ);
 	return IRQ_HANDLED;
 }
 
@@ -379,10 +416,10 @@ static int gp2a_setup_irq(struct gp2a_data *gp2a)
 
 	irq = gpio_to_irq(pdata->p_out);
 	rc = request_irq(irq,
-			 gp2a_irq_handler,
-			 IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-			 "proximity_int",
-			 gp2a);
+		gp2a_irq_handler,
+		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+		"proximity_int",
+		gp2a);
 	if (rc < 0) {
 		pr_err("%s: request_irq(%d) failed for gpio %d (%d)\n",
 			__func__, irq,
@@ -409,7 +446,7 @@ done:
 }
 
 static int gp2a_i2c_probe(struct i2c_client *client,
-			  const struct i2c_device_id *id)
+	const struct i2c_device_id *id)
 {
 	int ret = -ENODEV;
 	struct input_dev *input_dev;
@@ -432,14 +469,17 @@ static int gp2a_i2c_probe(struct i2c_client *client,
 	gp2a = kzalloc(sizeof(struct gp2a_data), GFP_KERNEL);
 	if (!gp2a) {
 		pr_err("%s: failed to alloc memory for module data\n",
-		       __func__);
+			__func__);
 		return -ENOMEM;
 	}
+
+#ifdef CONFIG_TOUCH_WAKE
+	current_device = gp2a;
+#endif
 
 	gp2a->pdata = pdata;
 	gp2a->i2c_client = client;
 	i2c_set_clientdata(client, gp2a);
-
 
 	wake_lock_init(&gp2a->prx_wake_lock, WAKE_LOCK_SUSPEND,
 		"prx_wake_lock");
@@ -472,7 +512,7 @@ static int gp2a_i2c_probe(struct i2c_client *client,
 		goto err_input_register_device_proximity;
 	}
 	ret = sysfs_create_group(&input_dev->dev.kobj,
-				 &proximity_attribute_group);
+		&proximity_attribute_group);
 	if (ret) {
 		pr_err("%s: could not create sysfs group\n", __func__);
 		goto err_sysfs_create_group_proximity;
@@ -516,7 +556,7 @@ static int gp2a_i2c_probe(struct i2c_client *client,
 	}
 	gp2a->light_input_dev = input_dev;
 	ret = sysfs_create_group(&input_dev->dev.kobj,
-				 &light_attribute_group);
+		&light_attribute_group);
 	if (ret) {
 		pr_err("%s: could not create sysfs group\n", __func__);
 		goto err_sysfs_create_group_light;
@@ -531,7 +571,7 @@ err_input_allocate_device_light:
 	destroy_workqueue(gp2a->wq);
 err_create_workqueue:
 	sysfs_remove_group(&gp2a->proximity_input_dev->dev.kobj,
-			   &proximity_attribute_group);
+		&proximity_attribute_group);
 err_sysfs_create_group_proximity:
 	input_unregister_device(gp2a->proximity_input_dev);
 err_input_register_device_proximity:
@@ -578,9 +618,9 @@ static int gp2a_i2c_remove(struct i2c_client *client)
 {
 	struct gp2a_data *gp2a = i2c_get_clientdata(client);
 	sysfs_remove_group(&gp2a->light_input_dev->dev.kobj,
-			   &light_attribute_group);
+		&light_attribute_group);
 	sysfs_remove_group(&gp2a->proximity_input_dev->dev.kobj,
-			   &proximity_attribute_group);
+		&proximity_attribute_group);
 	free_irq(gp2a->irq, gp2a);
 	destroy_workqueue(gp2a->wq);
 	input_unregister_device(gp2a->light_input_dev);
@@ -615,9 +655,9 @@ static struct i2c_driver gp2a_i2c_driver = {
 		.owner = THIS_MODULE,
 		.pm = &gp2a_pm_ops
 	},
-	.probe		= gp2a_i2c_probe,
-	.remove		= gp2a_i2c_remove,
-	.id_table	= gp2a_device_id,
+	.probe = gp2a_i2c_probe,
+	.remove = gp2a_i2c_remove,
+	.id_table = gp2a_device_id,
 };
 
 
@@ -630,6 +670,21 @@ static void __exit gp2a_exit(void)
 {
 	i2c_del_driver(&gp2a_i2c_driver);
 }
+
+#ifdef CONFIG_TOUCH_WAKE
+void enable_for_touchwake(void) {
+	proximity_last_state = current_device->power_state & PROXIMITY_ENABLED;
+	proximity_enable_store(NULL, NULL, "1", 1);
+	forced_by_touch_wake = true;
+}
+EXPORT_SYMBOL(enable_for_touchwake);
+
+void restore_for_touchwake(void) {
+	forced_by_touch_wake = false;
+	proximity_enable_store(NULL, NULL, proximity_last_state ? "1" : "0", 1);
+}
+EXPORT_SYMBOL(restore_for_touchwake);
+#endif
 
 module_init(gp2a_init);
 module_exit(gp2a_exit);

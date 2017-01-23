@@ -12,6 +12,10 @@ config ANDROID_BINDER_IPC
 	bool "Android Binder IPC Driver"
 	default n
 
+config ANDROID_LOGGER
+	tristate "Android log driver"
+	default n
+
 config ASHMEM
 	bool "Enable the Anonymous Shared Memory Subsystem"
 	default n
