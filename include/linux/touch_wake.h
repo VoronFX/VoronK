@@ -16,7 +16,7 @@ bool device_is_suspended(void);
 void set_powerkeydev(struct input_dev * input_device);
 
 static bool tw_debug_on;
-#define tw_debug(args...) if (unlikely(tw_debug_on)) pr_info(##args)
+#define tw_debug(str, args...) if (unlikely(tw_debug_on)) pr_info(str, ##args)
 
 
 #endif
