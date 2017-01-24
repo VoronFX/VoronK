@@ -529,7 +529,7 @@ static struct input_dev *tw_keyemul_dev;
 //	return IRQ_HANDLED;
 //}
 
-static int __init button_init(void)
+static int __init tw_keyemul_dev_init(void)
 {
 	int error;
 
@@ -537,7 +537,7 @@ static int __init button_init(void)
 	if (!tw_keyemul_dev) {
 		printk(KERN_ERR "tw_keyemul.c: Not enough memory\n");
 		error = -ENOMEM;
-		goto err_free_irq;
+		goto err_free_dev;
 	}
 
 	tw_keyemul_dev->name = "Touch wake key emulation device";
