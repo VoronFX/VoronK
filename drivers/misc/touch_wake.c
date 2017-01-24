@@ -530,9 +530,9 @@ static int __init tw_keyemul_dev_init(void)
 	tw_keyemul_dev->name = "Touch wake key emulation device";
 	tw_keyemul_dev->id.bustype = BUS_VIRTUAL;
 
-	set_bit(EV_KEY, tw_keyemul_dev.evbit);
-	set_bit(KEY_WAKEUP, tw_keyemul_dev.keybit);
-	set_bit(KEY_SLEEP, tw_keyemul_dev.keybit);
+	set_bit(EV_KEY, tw_keyemul_dev->evbit);
+	set_bit(KEY_WAKEUP, tw_keyemul_dev->keybit);
+	set_bit(KEY_SLEEP, tw_keyemul_dev->keybit);
 
 	error = input_register_device(tw_keyemul_dev);
 	if (error) {
