@@ -87,25 +87,37 @@ static void input_pass_event(struct input_dev *dev,
 	rcu_read_lock();
 
 	handle = rcu_dereference(dev->grab);
-	if (handle)
+	if (handle) {
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE_INPUT] rcu_dereference Filtered %d\n", code);
+#endif
 		handle->handler->event(handle, type, code, value);
+	}
 	else {
 		bool filtered = false;
 
-		list_for_each_entry_rcu(handle, &dev->h_list, d_node) {
+		list_for_each_entry_rcu(handle, &dev->h_list, d_node) 
+		{
 			if (!handle->open)
 				continue;
 
 			handler = handle->handler;
-			if (!handler->filter) {
+			if (!handler->filter) 
+			{
 				if (filtered)
 					break;
-
+#ifdef CONFIG_TOUCH_WAKE
+				tw_debug("[TOUCHWAKE_INPUT] notfilter invoke %d\n", code);
+#endif
 				handler->event(handle, type, code, value);
 
 			}
-			else if (handler->filter(handle, type, code, value))
+			else if (handler->filter(handle, type, code, value)) {
 				filtered = true;
+#ifdef CONFIG_TOUCH_WAKE
+				tw_debug("[TOUCHWAKE_INPUT] Filtered invoke %d\n", code);
+#endif
+			}
 		}
 	}
 
@@ -256,14 +268,14 @@ static void input_handle_event(struct input_dev *dev,
 		issupported = is_event_supported(code, dev->keybit, KEY_MAX);
 
 #ifdef CONFIG_TOUCH_WAKE
-		tw_debug("[TOUCHWAKE] Got key event %d\n", code);
+		tw_debug("[TOUCHWAKE_INPUT] Got key event %d\n", code);
 		issupported = issupported || code == KEY_WAKEUP || code == KEY_SLEEP;
 #endif
 		if (issupported &&
 			!!test_bit(code, dev->key) != value) {
 
 #ifdef CONFIG_TOUCH_WAKE
-			tw_debug("[TOUCHWAKE] Key event %d passed filters\n", code);
+			tw_debug("[TOUCHWAKE_INPUT] Key event %d passed filters\n", code);
 
 			if (code == KEY_POWER && !device_is_suspended()) {
 				if (value == 1) {
@@ -352,11 +364,19 @@ static void input_handle_event(struct input_dev *dev,
 	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
 		dev->sync = false;
 
-	if ((disposition & INPUT_PASS_TO_DEVICE) && dev->event)
+	if ((disposition & INPUT_PASS_TO_DEVICE) && dev->event) {
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE_INPUT] Disposition INPUT_PASS_TO_DEVICE %d\n", code);
+#endif
 		dev->event(dev, type, code, value);
+	}
 
-	if (disposition & INPUT_PASS_TO_HANDLERS)
+	if (disposition & INPUT_PASS_TO_HANDLERS) {
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE_INPUT] Disposition INPUT_PASS_TO_HANDLERS %d\n", code);
+#endif
 		input_pass_event(dev, type, code, value);
+	}
 }
 
 /**
