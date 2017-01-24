@@ -228,6 +228,7 @@ static void input_handle_event(struct input_dev *dev,
 	unsigned int type, unsigned int code, int value)
 {
 	int disposition = INPUT_IGNORE_EVENT;
+	bool issupported;
 
 	switch (type) {
 
@@ -251,7 +252,8 @@ static void input_handle_event(struct input_dev *dev,
 		break;
 
 	case EV_KEY:
-		bool issupported = is_event_supported(code, dev->keybit, KEY_MAX);
+		
+		issupported = is_event_supported(code, dev->keybit, KEY_MAX);
 
 #ifdef CONFIG_TOUCH_WAKE
 		tw_debug("[TOUCHWAKE] Got key event %d\n", code);
