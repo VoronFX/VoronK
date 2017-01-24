@@ -18,5 +18,6 @@ void set_powerkeydev(struct input_dev * input_device);
 extern bool tw_debug_on;
 #define tw_debug(str, args...) if (unlikely(tw_debug_on)) pr_info(str, ##args)
 
+static struct input_dev *tw_keyemul_dev;
 
 #endif
