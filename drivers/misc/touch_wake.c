@@ -189,10 +189,10 @@ static void presskey(unsigned int key)
 
 	tw_debug("[TOUCHWAKE] Emulating %d key press\n", key);
 	input_report_key(tw_keyemul_dev, key, 1);
-	input_sync(button_dev);
+	input_sync(tw_keyemul_dev);
 	tw_debug("[TOUCHWAKE] Emulating %d key release\n", key);
 	input_report_key(tw_keyemul_dev, key, 0);
-	input_sync(button_dev);
+	input_sync(tw_keyemul_dev);
 
 	mutex_unlock(&lock);
 
