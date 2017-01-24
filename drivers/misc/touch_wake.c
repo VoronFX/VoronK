@@ -186,17 +186,13 @@ static void touchwake_touchoff(struct work_struct * touchoff_work)
 static void presskey(unsigned int key)
 {
 	mutex_lock(&lock);
+
 	tw_debug("[TOUCHWAKE] Emulating %d key press\n", key);
-
-	input_event(powerkey_device, EV_KEY, key, 1);
-	input_event(powerkey_device, EV_SYN, 0, 0);
-	msleep(POWERPRESS_DELAY);
-
+	input_report_key(tw_keyemul_dev, key, 1);
+	input_sync(button_dev);
 	tw_debug("[TOUCHWAKE] Emulating %d key release\n", key);
-
-	input_event(powerkey_device, EV_KEY, key, 0);
-	input_event(powerkey_device, EV_SYN, 0, 0);
-	msleep(POWERPRESS_DELAY);
+	input_report_key(tw_keyemul_dev, key, 0);
+	input_sync(button_dev);
 
 	mutex_unlock(&lock);
 
@@ -205,17 +201,13 @@ static void presskey(unsigned int key)
 
 static void press_wakeupkey(struct work_struct * presswakeupkey_work)
 {
-	powerkey_device = tw_keyemul_dev;
-	presskey(KEY_WAKEUP); //supported from Android 5+
-	//presskey(KEY_POWER);
+	presskey(KEY_WAKEUP); 
 	return;
 }
 
 static void press_sleepkey(struct work_struct * presssleepkey_work)
 {
-	powerkey_device = tw_keyemul_dev;
-	presskey(KEY_SLEEP); //supported from for Android 5+
-	//presskey(KEY_POWER);
+	presskey(KEY_SLEEP); 
 	return;
 }
 
@@ -519,15 +511,7 @@ static int __init touchwake_control_init(void)
 
 device_initcall(touchwake_control_init);
 
-
 static struct input_dev *tw_keyemul_dev;
-//
-//static irqreturn_t button_interrupt(int irq, void *dummy)
-//{
-//	input_report_key(button_dev, BTN_0, inb(BUTTON_PORT) & 1);
-//	input_sync(button_dev);
-//	return IRQ_HANDLED;
-//}
 
 static int __init tw_keyemul_dev_init(void)
 {
@@ -535,16 +519,10 @@ static int __init tw_keyemul_dev_init(void)
 
 	tw_keyemul_dev = input_allocate_device();
 	if (!tw_keyemul_dev) {
-		printk(KERN_ERR "tw_keyemul.c: Not enough memory\n");
+		printk(KERN_ERR "touch_wake.c: Not enough memory\n");
 		error = -ENOMEM;
 		goto err_free_dev;
 	}
-
-	//input->name = name;
-	//input->phys = button->phys;
-	//input->id.bustype = BUS_HOST;
-	//input->id.product = button->type;
-	//input->dev.parent = &device->dev;
 
 	tw_keyemul_dev->name = "Touch wake key emulation device";
 	tw_keyemul_dev->id.bustype = BUS_VIRTUAL;
@@ -553,12 +531,9 @@ static int __init tw_keyemul_dev_init(void)
 	tw_keyemul_dev->keybit[BIT_WORD(KEY_WAKEUP)] = BIT_MASK(KEY_WAKEUP);
 	tw_keyemul_dev->keybit[BIT_WORD(KEY_SLEEP)] = BIT_MASK(KEY_SLEEP);
 
-	//set_bit(EV_KEY, tw_keyemul_dev.evbit);
-	//set_bit(BTN_0, button_dev.keybit);
-
 	error = input_register_device(tw_keyemul_dev);
 	if (error) {
-		printk(KERN_ERR "tw_keyemul.c: Failed to register device\n");
+		printk(KERN_ERR "touch_wake.c: Failed to register Touch wake key emulation device\n");
 		goto err_free_dev;
 	}
 

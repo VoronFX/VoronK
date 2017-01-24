@@ -88,9 +88,6 @@ static void input_pass_event(struct input_dev *dev,
 
 	handle = rcu_dereference(dev->grab);
 	if (handle) {
-#ifdef CONFIG_TOUCH_WAKE
-		tw_debug("[TOUCHWAKE_INPUT] rcu_dereference Filtered %d\n", code);
-#endif
 		handle->handler->event(handle, type, code, value);
 	}
 	else {
@@ -106,17 +103,11 @@ static void input_pass_event(struct input_dev *dev,
 			{
 				if (filtered)
 					break;
-#ifdef CONFIG_TOUCH_WAKE
-				tw_debug("[TOUCHWAKE_INPUT] notfilter invoke %d\n", code);
-#endif
 				handler->event(handle, type, code, value);
 
 			}
 			else if (handler->filter(handle, type, code, value)) {
 				filtered = true;
-#ifdef CONFIG_TOUCH_WAKE
-				tw_debug("[TOUCHWAKE_INPUT] Filtered invoke %d\n", code);
-#endif
 			}
 		}
 	}
@@ -264,25 +255,14 @@ static void input_handle_event(struct input_dev *dev,
 		break;
 
 	case EV_KEY:
-		
-		issupported = is_event_supported(code, dev->keybit, KEY_MAX);
-
 #ifdef CONFIG_TOUCH_WAKE
-		if (code == KEY_SLEEP || code == KEY_WAKEUP) {
-			tw_debug("[TOUCHWAKE_INPUT] powerkey device set\n");
-
-			set_powerkeydev(dev);
-		}
-
-
 		tw_debug("[TOUCHWAKE_INPUT] Got key event %d\n", code);
-		issupported = issupported || code == KEY_WAKEUP || code == KEY_SLEEP;
 #endif
-		if (issupported &&
+		if (is_event_supported(code, dev->keybit, KEY_MAX) &&
 			!!test_bit(code, dev->key) != value) {
 
 #ifdef CONFIG_TOUCH_WAKE
-			tw_debug("[TOUCHWAKE_INPUT] Key event %d passed filters\n", code);
+			tw_debug("[TOUCHWAKE_INPUT] Key event %d supported\n", code);
 
 			if (code == KEY_POWER && !device_is_suspended()) {
 				if (value == 1) {
@@ -1885,9 +1865,6 @@ int input_register_device(struct input_dev *dev)
 
 	/* Every input device generates EV_SYN/SYN_REPORT events. */
 	__set_bit(EV_SYN, dev->evbit);
-
-	__set_bit(KEY_SLEEP, dev->keybit);
-	__set_bit(KEY_WAKEUP, dev->keybit);
 
 	/* KEY_RESERVED is not supposed to be transmitted to userspace. */
 	__clear_bit(KEY_RESERVED, dev->keybit);
