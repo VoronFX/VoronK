@@ -540,8 +540,14 @@ static int __init tw_keyemul_dev_init(void)
 		goto err_free_dev;
 	}
 
+	//input->name = name;
+	//input->phys = button->phys;
+	//input->id.bustype = BUS_HOST;
+	//input->id.product = button->type;
+	//input->dev.parent = &device->dev;
+
 	tw_keyemul_dev->name = "Touch wake key emulation device";
-	tw_keyemul_dev->id = BUS_VIRTUAL;
+	tw_keyemul_dev->id.bustype = BUS_VIRTUAL;
 
 	tw_keyemul_dev->evbit[0] = BIT_MASK(EV_KEY);
 	tw_keyemul_dev->keybit[BIT_WORD(KEY_WAKEUP)] = BIT_MASK(KEY_WAKEUP);
