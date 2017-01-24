@@ -38,6 +38,7 @@
 #include <linux/touch_wake.h>
 bool proximity_last_state;
 bool forced_by_touch_wake;
+#define DEBUG_PRINT
 #endif
 struct gp2a_data *current_device;
 
@@ -385,7 +386,7 @@ irqreturn_t gp2a_irq_handler(int irq, void *data)
 	/* 0 is close, 1 is far */
 	input_report_abs(ip->proximity_input_dev, ABS_DISTANCE, val);
 	input_sync(ip->proximity_input_dev);
-#ifdef DEBUG_PRINT
+#ifdef CONFIG_TOUCH_WAKE
 	if (!forced_by_touch_wake)
 #endif
 		wake_lock_timeout(&ip->prx_wake_lock, 3 * HZ);

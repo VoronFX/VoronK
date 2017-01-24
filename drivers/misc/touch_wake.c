@@ -75,7 +75,8 @@ static bool first_touch = false;
 
 static void touchwake_touchoff(struct work_struct * touchoff_work);
 static DECLARE_DELAYED_WORK(touchoff_work, touchwake_touchoff);
-static void press_powerkey(struct work_struct * presspower_work);
+static void press_wakeupkey(struct work_struct * presskey_work)
+static void press_sleepkey(struct work_struct * presskey_work)
 static DECLARE_WORK(presspower_work, press_powerkey);
 static DEFINE_MUTEX(lock);
 
