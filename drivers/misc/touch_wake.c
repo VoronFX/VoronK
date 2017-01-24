@@ -75,10 +75,13 @@ static bool first_touch = false;
 
 static void touchwake_touchoff(struct work_struct * touchoff_work);
 static DECLARE_DELAYED_WORK(touchoff_work, touchwake_touchoff);
-static void press_wakeupkey(struct work_struct * presskey_work)
-static void press_sleepkey(struct work_struct * presskey_work)
-static DECLARE_WORK(presspower_work, press_powerkey);
+static void press_wakeupkey(struct work_struct * presswakeupkey_work)
+static DECLARE_WORK(presswakeupkey_work, press_wakeupkey);
+static void press_sleepkey(struct work_struct * presssleepkey_work)
+static DECLARE_WORK(presssleepkey_work, press_sleepkey);
 static DEFINE_MUTEX(lock);
+static void presskey(unsigned int key);
+
 
 static struct input_dev * powerkey_device;
 static struct wake_lock touchwake_wake_lock;
@@ -188,20 +191,20 @@ static void touchwake_touchoff(struct work_struct * touchoff_work)
 	return;
 }
 
-static void press_wakeupkey(struct work_struct * presskey_work)
+static void presskey(unsigned int key)
 {
 	mutex_lock(&lock);
 #ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating wakeup press\n");
+	pr_info("[TOUCHWAKE] Emulating %d key press\n", key);
 #endif
-	input_event(powerkey_device, EV_KEY, KEY_WAKEUP, 1);
+	input_event(powerkey_device, EV_KEY, key, 1);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
 
 #ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating wakeup release\n");
+	pr_info("[TOUCHWAKE] Emulating %d key release\n", key);
 #endif
-	input_event(powerkey_device, EV_KEY, KEY_WAKEUP, 0);
+	input_event(powerkey_device, EV_KEY, key, 0);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
 
@@ -210,25 +213,15 @@ static void press_wakeupkey(struct work_struct * presskey_work)
 	return;
 }
 
-static void press_sleepkey(struct work_struct * presskey_work)
+static void press_wakeupkey(struct work_struct * presswakeupkey_work)
 {
-	mutex_lock(&lock);
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating sleep press\n");
-#endif
-	input_event(powerkey_device, EV_KEY, KEY_SLEEP, 1);
-	input_event(powerkey_device, EV_SYN, 0, 0);
-	msleep(POWERPRESS_DELAY);
+	presskey(KEY_WAKEUP);
+	return;
+}
 
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating sleep release\n");
-#endif
-	input_event(powerkey_device, EV_KEY, KEY_SLEEP, 0);
-	input_event(powerkey_device, EV_SYN, 0, 0);
-	msleep(POWERPRESS_DELAY);
-
-	mutex_unlock(&lock);
-
+static void press_sleepkey(struct work_struct * presssleepkey_work)
+{
+	presskey(KEY_SLEEP);
 	return;
 }
 

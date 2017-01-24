@@ -270,10 +270,10 @@ static ssize_t proximity_enable_store(struct device *dev,
 		return -EINVAL;
 	}
 
-#ifdef DEBUG_PRINT
+#ifdef CONFIG_TOUCH_WAKE
 	if (forced_by_touch_wake) {
 		proximity_last_state = new_value;
-		return;
+		return size;
 	}
 #endif
 
