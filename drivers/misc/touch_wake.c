@@ -204,15 +204,15 @@ static void presskey(unsigned int key)
 
 static void press_wakeupkey(struct work_struct * presswakeupkey_work)
 {
-	//presskey(KEY_WAKEUP); supported from Android 5+
-	presskey(KEY_POWER);
+	presskey(KEY_WAKEUP); //supported from Android 5+
+	//presskey(KEY_POWER);
 	return;
 }
 
 static void press_sleepkey(struct work_struct * presssleepkey_work)
 {
-	//presskey(KEY_SLEEP); supported from for Android 5+
-	presskey(KEY_POWER);
+	presskey(KEY_SLEEP); //supported from for Android 5+
+	//presskey(KEY_POWER);
 	return;
 }
 
