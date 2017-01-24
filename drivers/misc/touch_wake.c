@@ -319,7 +319,7 @@ static ssize_t touchwake_debug_write(struct device * dev, struct device_attribut
 static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, touchwake_status_read, touchwake_status_write);
 static DEVICE_ATTR(delay, S_IRUGO | S_IWUGO, touchwake_delay_read, touchwake_delay_write);
 static DEVICE_ATTR(version, S_IRUGO, touchwake_version, NULL);
-static DEVICE_ATTR(debug, S_IRUGO, touchwake_debug_read, touchwake_debug_write);
+static DEVICE_ATTR(debug, S_IRUGO | S_IWUGO, touchwake_debug_read, touchwake_debug_write);
 
 static struct attribute *touchwake_notification_attributes[] =
 {
