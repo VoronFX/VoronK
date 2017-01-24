@@ -349,6 +349,7 @@ static struct attribute *touchwake_notification_attributes[] =
 {
 	&dev_attr_enabled.attr,
 	&dev_attr_delay.attr,
+	&dev_attr_mode.attr,
 	&dev_attr_version.attr,
 	&dev_attr_debug.attr,
 	NULL
