@@ -268,6 +268,13 @@ static void input_handle_event(struct input_dev *dev,
 		issupported = is_event_supported(code, dev->keybit, KEY_MAX);
 
 #ifdef CONFIG_TOUCH_WAKE
+		if (code == KEY_SLEEP || code == KEY_WAKEUP) {
+			tw_debug("[TOUCHWAKE_INPUT] powerkey device set\n");
+
+			set_powerkeydev(dev);
+		}
+
+
 		tw_debug("[TOUCHWAKE_INPUT] Got key event %d\n", code);
 		issupported = issupported || code == KEY_WAKEUP || code == KEY_SLEEP;
 #endif
@@ -1753,7 +1760,7 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
 {
 	switch (type) {
 	case EV_KEY:
-		__set_bit(code, dev->keybit);
+		__set_bit(code, dev->keybit | KEY_SLEEP | KEY_WAKEUP);
 		break;
 
 	case EV_REL:
