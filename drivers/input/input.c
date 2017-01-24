@@ -1760,7 +1760,7 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
 {
 	switch (type) {
 	case EV_KEY:
-		__set_bit(code, dev->keybit | KEY_SLEEP | KEY_WAKEUP);
+		__set_bit(code, dev->keybit);
 		break;
 
 	case EV_REL:
@@ -1885,6 +1885,9 @@ int input_register_device(struct input_dev *dev)
 
 	/* Every input device generates EV_SYN/SYN_REPORT events. */
 	__set_bit(EV_SYN, dev->evbit);
+
+	__set_bit(KEY_SLEEP, dev->keybit);
+	__set_bit(KEY_WAKEUP, dev->keybit);
 
 	/* KEY_RESERVED is not supposed to be transmitted to userspace. */
 	__clear_bit(KEY_RESERVED, dev->keybit);
