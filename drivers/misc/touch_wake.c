@@ -190,12 +190,12 @@ static void presskey(unsigned int key)
 	tw_debug("[TOUCHWAKE] Emulating %d key press\n", key);
 	input_report_key(tw_keyemul_dev, key, 1);
 	input_sync(tw_keyemul_dev);
-	msleep(POWERPRESS_DELAY);
+//	msleep(POWERPRESS_DELAY);
 
 	tw_debug("[TOUCHWAKE] Emulating %d key release\n", key);
 	input_report_key(tw_keyemul_dev, key, 0);
 	input_sync(tw_keyemul_dev);
-	msleep(POWERPRESS_DELAY);
+//	msleep(POWERPRESS_DELAY);
 
 	mutex_unlock(&lock);
 
@@ -530,9 +530,9 @@ static int __init tw_keyemul_dev_init(void)
 	tw_keyemul_dev->name = "Touch wake key emulation device";
 	tw_keyemul_dev->id.bustype = BUS_VIRTUAL;
 
-	tw_keyemul_dev->evbit[0] = BIT_MASK(EV_KEY);
-	tw_keyemul_dev->keybit[BIT_WORD(KEY_WAKEUP)] = BIT_MASK(KEY_WAKEUP);
-	tw_keyemul_dev->keybit[BIT_WORD(KEY_SLEEP)] = BIT_MASK(KEY_SLEEP);
+	set_bit(EV_KEY, tw_keyemul_dev.evbit);
+	set_bit(KEY_WAKEUP, tw_keyemul_dev.keybit);
+	set_bit(KEY_SLEEP, tw_keyemul_dev.keybit);
 
 	error = input_register_device(tw_keyemul_dev);
 	if (error) {
