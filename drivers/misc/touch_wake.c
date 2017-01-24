@@ -43,6 +43,7 @@
 #include <linux/wakelock.h>
 #include <linux/input.h>
 #include <linux/kmod.h>
+#include <linux/module.h>
 
 extern void touchscreen_enable(void);
 extern void touchscreen_disable(void);
@@ -204,6 +205,7 @@ static void presskey(unsigned int key)
 
 static void press_wakeupkey(struct work_struct * presswakeupkey_work)
 {
+	powerkey_device = tw_keyemul_dev;
 	presskey(KEY_WAKEUP); //supported from Android 5+
 	//presskey(KEY_POWER);
 	return;
@@ -211,6 +213,7 @@ static void press_wakeupkey(struct work_struct * presswakeupkey_work)
 
 static void press_sleepkey(struct work_struct * presssleepkey_work)
 {
+	powerkey_device = tw_keyemul_dev;
 	presskey(KEY_SLEEP); //supported from for Android 5+
 	//presskey(KEY_POWER);
 	return;
@@ -515,3 +518,55 @@ static int __init touchwake_control_init(void)
 }
 
 device_initcall(touchwake_control_init);
+
+
+static struct input_dev *tw_keyemul_dev;
+//
+//static irqreturn_t button_interrupt(int irq, void *dummy)
+//{
+//	input_report_key(button_dev, BTN_0, inb(BUTTON_PORT) & 1);
+//	input_sync(button_dev);
+//	return IRQ_HANDLED;
+//}
+
+static int __init button_init(void)
+{
+	int error;
+
+	tw_keyemul_dev = input_allocate_device();
+	if (!tw_keyemul_dev) {
+		printk(KERN_ERR "tw_keyemul.c: Not enough memory\n");
+		error = -ENOMEM;
+		goto err_free_irq;
+	}
+
+	tw_keyemul_dev->name = "Touch wake key emulation device";
+	tw_keyemul_dev->id = BUS_VIRTUAL;
+
+	tw_keyemul_dev->evbit[0] = BIT_MASK(EV_KEY);
+	tw_keyemul_dev->keybit[BIT_WORD(KEY_WAKEUP)] = BIT_MASK(KEY_WAKEUP);
+	tw_keyemul_dev->keybit[BIT_WORD(KEY_SLEEP)] = BIT_MASK(KEY_SLEEP);
+
+	//set_bit(EV_KEY, tw_keyemul_dev.evbit);
+	//set_bit(BTN_0, button_dev.keybit);
+
+	error = input_register_device(tw_keyemul_dev);
+	if (error) {
+		printk(KERN_ERR "tw_keyemul.c: Failed to register device\n");
+		goto err_free_dev;
+	}
+
+	return 0;
+
+err_free_dev:
+	input_free_device(tw_keyemul_dev);
+	return error;
+}
+
+static void __exit tw_keyemul_dev_exit(void)
+{
+	input_unregister_device(tw_keyemul_dev);
+}
+
+module_init(tw_keyemul_dev_init);
+module_exit(tw_keyemul_dev_exit);
