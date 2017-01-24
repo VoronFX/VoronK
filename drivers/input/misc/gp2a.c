@@ -254,14 +254,14 @@ static ssize_t proximity_enable_store(struct device *dev,
 
 	if (sysfs_streq(buf, "1")) {
 		new_value = true;
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE_PROXIMITY] Turning On\n");
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE_PROXIMITY] Turning On\n");
 #endif
 	}
 	else if (sysfs_streq(buf, "0")) {
 		new_value = false;
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE_PROXIMITY] Turning Off\n");
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE_PROXIMITY] Turning Off\n");
 #endif
 	}
 	else {
@@ -269,10 +269,10 @@ static ssize_t proximity_enable_store(struct device *dev,
 		return -EINVAL;
 	}
 
-#ifdef DEBUG_PRINT
+#ifdef CONFIG_TOUCH_WAKE
 	if (forced_by_touch_wake) {
 		proximity_last_state = new_value;
-		return;
+		return size;
 	}
 #endif
 
@@ -385,7 +385,7 @@ irqreturn_t gp2a_irq_handler(int irq, void *data)
 	/* 0 is close, 1 is far */
 	input_report_abs(ip->proximity_input_dev, ABS_DISTANCE, val);
 	input_sync(ip->proximity_input_dev);
-#ifdef DEBUG_PRINT
+#ifdef CONFIG_TOUCH_WAKE
 	if (!forced_by_touch_wake)
 #endif
 		wake_lock_timeout(&ip->prx_wake_lock, 3 * HZ);

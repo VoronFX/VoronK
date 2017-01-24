@@ -43,12 +43,14 @@
 #include <linux/wakelock.h>
 #include <linux/input.h>
 #include <linux/kmod.h>
+#include <linux/module.h>
 
 extern void touchscreen_enable(void);
 extern void touchscreen_disable(void);
 
 extern void enable_for_touchwake(void);
 extern void restore_for_touchwake(void);
+extern bool tw_debug_on = false;
 
 static bool touchwake_enabled = false;
 static bool touch_disabled = false;
@@ -60,7 +62,8 @@ enum
 {
 	TOUCH_WAKE_BIT = 0x01,
 	PROXIMITY_WAKE_BIT = 0x02,
-	LONGTOUCH_SLEEP_WAKE_BIT = 0x04
+	LONGTOUCH_SLEEP_WAKE_BIT = 0x04,
+	PROXIMITY_TOUCH_BIT = 0x08
 };
 
 static unsigned int mode = TOUCH_WAKE_BIT | PROXIMITY_WAKE_BIT | LONGTOUCH_SLEEP_WAKE_BIT;
@@ -75,9 +78,13 @@ static bool first_touch = false;
 
 static void touchwake_touchoff(struct work_struct * touchoff_work);
 static DECLARE_DELAYED_WORK(touchoff_work, touchwake_touchoff);
-static void press_powerkey(struct work_struct * presspower_work);
-static DECLARE_WORK(presspower_work, press_powerkey);
+static void press_wakeupkey(struct work_struct * presswakeupkey_work);
+static DECLARE_WORK(presswakeupkey_work, press_wakeupkey);
+static void press_sleepkey(struct work_struct * presssleepkey_work);
+static DECLARE_WORK(presssleepkey_work, press_sleepkey);
 static DEFINE_MUTEX(lock);
+static void presskey(unsigned int key);
+
 
 static struct input_dev * powerkey_device;
 static struct wake_lock touchwake_wake_lock;
@@ -89,13 +96,10 @@ static struct timeval touch_begin;
 #define TIME_LONGTOUCH 300
 #define POWERPRESS_DELAY 50
 
-//#define DEBUG_PRINT
-
 static void touchwake_disable_touch(void)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Disable touch controls\n");
-#endif
+	tw_debug("[TOUCHWAKE]: Disable touch controls\n");
+
 	touchscreen_disable();
 	touch_disabled = true;
 	return;
@@ -103,9 +107,8 @@ static void touchwake_disable_touch(void)
 
 static void touchwake_enable_touch(void)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Enable touch controls\n");
-#endif
+	tw_debug("[TOUCHWAKE] Enable touch controls\n");
+
 	touchscreen_enable();
 	touch_disabled = false;
 	return;
@@ -113,35 +116,30 @@ static void touchwake_enable_touch(void)
 
 static void touchwake_early_suspend(struct early_suspend * h)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Enter early suspend\n");
-#endif
+	tw_debug("[TOUCHWAKE] Enter early suspend\n");
 
 	if (touchwake_enabled) {
 
 		if (timed_out && (mode & TOUCH_WAKE_BIT)) {
-#ifdef DEBUG_PRINT
-			pr_info("[TOUCHWAKE] Early suspend - keep touch enabled indefinately\n");
-#endif
+			tw_debug("[TOUCHWAKE] Early suspend - keep touch enabled indefinately\n");
+
 			if (keep_wake_lock)
 				wake_lock(&touchwake_wake_lock);
 		}
 		else {
-#ifdef DEBUG_PRINT
-			pr_info("[TOUCHWAKE] Early suspend - disable touch immediately (indefinate mode)\n");
-#endif
+			tw_debug("[TOUCHWAKE] Early suspend - disable touch immediately (indefinate mode)\n");
+
 			touchwake_disable_touch();
 		}
 
 
-		if ((mode & PROXIMITY_WAKE_BIT)) {
+		if ((mode & PROXIMITY_WAKE_BIT) || (mode & PROXIMITY_TOUCH_BIT)) {
 			enable_for_touchwake();
 		}
 	}
 	else {
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE] Early suspend - disable touch immediately (TouchWake disabled)\n");
-#endif
+		tw_debug("[TOUCHWAKE] Early suspend - disable touch immediately (TouchWake disabled)\n");
+
 		touchwake_disable_touch();
 	}
 
@@ -151,9 +149,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 
 static void touchwake_late_resume(struct early_suspend * h)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Enter late resume\n");
-#endif
+	tw_debug("[TOUCHWAKE] Enter late resume\n");
 
 	cancel_delayed_work(&touchoff_work);
 	flush_scheduled_work();
@@ -164,7 +160,7 @@ static void touchwake_late_resume(struct early_suspend * h)
 	if (touch_disabled)
 		touchwake_enable_touch();
 
-	if ((mode & PROXIMITY_WAKE_BIT))
+	if ((mode & PROXIMITY_WAKE_BIT) || (mode & PROXIMITY_TOUCH_BIT))
 		restore_for_touchwake();
 
 	timed_out = true;
@@ -187,25 +183,31 @@ static void touchwake_touchoff(struct work_struct * touchoff_work)
 	return;
 }
 
-static void press_powerkey(struct work_struct * presspower_work)
+static void presskey(unsigned int key)
 {
 	mutex_lock(&lock);
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating power press\n");
-#endif
-	input_event(powerkey_device, EV_KEY, KEY_POWER, 1);
-	input_event(powerkey_device, EV_SYN, 0, 0);
-	msleep(POWERPRESS_DELAY);
 
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating power release\n");
-#endif
-	input_event(powerkey_device, EV_KEY, KEY_POWER, 0);
-	input_event(powerkey_device, EV_SYN, 0, 0);
-	msleep(POWERPRESS_DELAY);
+	tw_debug("[TOUCHWAKE] Emulating %d key press\n", key);
+	input_report_key(tw_keyemul_dev, key, 1);
+	input_sync(button_dev);
+	tw_debug("[TOUCHWAKE] Emulating %d key release\n", key);
+	input_report_key(tw_keyemul_dev, key, 0);
+	input_sync(button_dev);
 
 	mutex_unlock(&lock);
 
+	return;
+}
+
+static void press_wakeupkey(struct work_struct * presswakeupkey_work)
+{
+	presskey(KEY_WAKEUP); 
+	return;
+}
+
+static void press_sleepkey(struct work_struct * presssleepkey_work)
+{
+	presskey(KEY_SLEEP); 
 	return;
 }
 
@@ -222,27 +224,22 @@ static ssize_t touchwake_status_write(struct device * dev, struct device_attribu
 		pr_devel("%s: %u \n", __FUNCTION__, data);
 
 		if (data == 1) {
-#ifdef DEBUG_PRINT
-			pr_info("[TOUCHWAKE] %s: TOUCHWAKE function enabled\n", __FUNCTION__);
-#endif
+			tw_debug("[TOUCHWAKE] %s: TOUCHWAKE function enabled\n", __FUNCTION__);
+
 			touchwake_enabled = true;
 		}
 		else if (data == 0) {
-#ifdef DEBUG_PRINT
-			pr_info("[TOUCHWAKE] %s: TOUCHWAKE function disabled\n", __FUNCTION__);
-#endif
+			tw_debug("[TOUCHWAKE] %s: TOUCHWAKE function disabled\n", __FUNCTION__);
+
 			touchwake_enabled = false;
-#ifdef DEBUG_PRINT
 		}
 		else {
-			pr_info("[TOUCHWAKE] %s: invalid input range %u\n", __FUNCTION__, data);
-#endif
+			tw_debug("[TOUCHWAKE] %s: invalid input range %u\n", __FUNCTION__, data);
 		}
-#ifdef DEBUG_PRINT
 	}
 	else {
-		pr_info("[TOUCHWAKE] %s: invalid input\n", __FUNCTION__);
-#endif
+		tw_debug("[TOUCHWAKE] %s: invalid input\n", __FUNCTION__);
+
 	}
 
 	return size;
@@ -259,14 +256,34 @@ static ssize_t touchwake_delay_write(struct device * dev, struct device_attribut
 
 	if (sscanf(buf, "%u\n", &data) == 1) {
 		mode = data / 1000;
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE] Mode set to %u\n", mode);
-#endif
-#ifdef DEBUG_PRINT
+		tw_debug("[TOUCHWAKE] Mode set to %u\n", mode);
+
 	}
 	else {
-		pr_info("[TOUCHWAKE] %s: invalid input\n", __FUNCTION__);
-#endif
+		tw_debug("[TOUCHWAKE] %s: invalid input\n", __FUNCTION__);
+
+	}
+
+	return size;
+}
+
+static ssize_t touchwake_mode_read(struct device * dev, struct device_attribute * attr, char * buf)
+{
+	return sprintf(buf, "%u\n", mode);
+}
+
+static ssize_t touchwake_mode_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+{
+	unsigned int data;
+
+	if (sscanf(buf, "%u\n", &data) == 1) {
+		mode = data;
+		tw_debug("[TOUCHWAKE] Mode set to %u\n", mode);
+
+	}
+	else {
+		tw_debug("[TOUCHWAKE] %s: invalid input\n", __FUNCTION__);
+
 	}
 
 	return size;
@@ -283,28 +300,53 @@ static ssize_t touchwake_version(struct device * dev, struct device_attribute * 
 	return sprintf(buf, "%s\n", TOUCHWAKE_VERSION);
 }
 
-#ifdef DEBUG_PRINT
-static ssize_t touchwake_debug(struct device * dev, struct device_attribute * attr, char * buf)
+static ssize_t touchwake_debug_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
-	return sprintf(buf, "timed_out : %u\nprox_near : %u\n", (unsigned int)timed_out, (unsigned int)prox_near);
+	return sprintf(buf, "%u\n", (tw_debug_on ? 1 : 0));
 }
-#endif
+
+static ssize_t touchwake_debug_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+{
+	unsigned int data;
+
+	if (sscanf(buf, "%u\n", &data) == 1) {
+		pr_devel("%s: %u \n", __FUNCTION__, data);
+
+		if (data == 1) {
+			tw_debug("[TOUCHWAKE] %s: tw_debug function enabled\n", __FUNCTION__);
+
+			tw_debug_on = true;
+		}
+		else if (data == 0) {
+			tw_debug("[TOUCHWAKE] %s: tw_debug function disabled\n", __FUNCTION__);
+
+			tw_debug_on = false;
+		}
+		else {
+			tw_debug("[TOUCHWAKE] %s: invalid input range %u\n", __FUNCTION__, data);
+		}
+	}
+	else {
+		tw_debug("[TOUCHWAKE] %s: invalid input\n", __FUNCTION__);
+
+	}
+
+	return size;
+}
 
 static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, touchwake_status_read, touchwake_status_write);
 static DEVICE_ATTR(delay, S_IRUGO | S_IWUGO, touchwake_delay_read, touchwake_delay_write);
+static DEVICE_ATTR(mode, S_IRUGO | S_IWUGO, touchwake_mode_read, touchwake_mode_write);
 static DEVICE_ATTR(version, S_IRUGO, touchwake_version, NULL);
-#ifdef DEBUG_PRINT
-static DEVICE_ATTR(debug, S_IRUGO, touchwake_debug, NULL);
-#endif
+static DEVICE_ATTR(debug, S_IRUGO | S_IWUGO, touchwake_debug_read, touchwake_debug_write);
 
 static struct attribute *touchwake_notification_attributes[] =
 {
 	&dev_attr_enabled.attr,
 	&dev_attr_delay.attr,
+	&dev_attr_mode.attr,
 	&dev_attr_version.attr,
-#ifdef DEBUG_PRINT
 	&dev_attr_debug.attr,
-#endif
 	NULL
 };
 
@@ -322,9 +364,7 @@ static struct miscdevice touchwake_device =
 void proximity_detected(void)
 {
 	prox_near = true;
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Proximity near event\n");
-#endif
+	tw_debug("[TOUCHWAKE] Proximity near event\n");
 
 	return;
 }
@@ -333,17 +373,14 @@ EXPORT_SYMBOL(proximity_detected);
 void proximity_off(void)
 {
 
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Proximity far event\n");
-#endif
+	tw_debug("[TOUCHWAKE] Proximity far event\n");
 
 	if (likely(touchwake_enabled) && prox_near && (mode & PROXIMITY_WAKE_BIT) && device_suspended)
 	{
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE] Waking by proximitor\n");
-#endif
+		tw_debug("[TOUCHWAKE] Waking by proximitor\n");
+
 		device_suspended = false;
-		schedule_work(&presspower_work);
+		schedule_work(&presswakeupkey_work);
 	}
 
 	prox_near = false;
@@ -353,9 +390,7 @@ EXPORT_SYMBOL(proximity_off);
 
 void powerkey_pressed(void)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Powerkey pressed\n");
-#endif
+	tw_debug("[TOUCHWAKE] Powerkey pressed\n");
 
 	do_gettimeofday(&last_powerkeypress);
 	//timed_out = false; // Yank555 : consider user is indeed turning off the device
@@ -366,9 +401,7 @@ EXPORT_SYMBOL(powerkey_pressed);
 
 void powerkey_released(void)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Powerkey released\n");
-#endif
+	tw_debug("[TOUCHWAKE] Powerkey released\n");
 
 	struct timeval now;
 	int time_pressed;
@@ -379,14 +412,12 @@ void powerkey_released(void)
 
 	if (unlikely(time_pressed > TIME_LONGPRESS || device_suspended)) {
 		timed_out = true; // Yank555 : OK, user is not turning off device, but long-pressing Powerkey, or turing on device, so back to normal
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE] Powerkey longpress detected released\n");
-#endif
-#ifdef DEBUG_PRINT
+		tw_debug("[TOUCHWAKE] Powerkey longpress detected released\n");
+
 	}
 	else {
-		pr_info("[TOUCHWAKE] Device shortpress detected released\n");
-#endif
+		tw_debug("[TOUCHWAKE] Device shortpress detected released\n");
+
 	}
 
 	return;
@@ -395,21 +426,19 @@ EXPORT_SYMBOL(powerkey_released);
 
 void touch_press(bool up)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Touch event! Up = %d\n", up);
-#endif
+	tw_debug("[TOUCHWAKE] Touch event! Up = %d\n", up);
 
-	if (likely(touchwake_enabled) && (mode & TOUCH_WAKE_BIT)) {
+	if (likely(touchwake_enabled) && (mode & TOUCH_WAKE_BIT)
+		&& (!prox_near || !(mode & PROXIMITY_TOUCH_BIT))) {
 
 		if (unlikely(device_suspended)) {
 			device_suspended = false;
-#ifdef DEBUG_PRINT
-			pr_info("[TOUCHWAKE] Got toch in suspended, awakening, Up = %d\n", up);
-#endif
+			tw_debug("[TOUCHWAKE] Got toch in suspended, awakening, Up = %d\n", up);
+
 			if (!up && (mode & LONGTOUCH_SLEEP_WAKE_BIT))
 				first_touch = true;
 			do_gettimeofday(&touch_begin);
-			schedule_work(&presspower_work);
+			schedule_work(&presswakeupkey_work);
 		}
 		else if (up && first_touch) {
 			first_touch = false;
@@ -423,15 +452,13 @@ void touch_press(bool up)
 
 			if (time_pressed > TIME_LONGTOUCH)
 			{
-#ifdef DEBUG_PRINT
-				pr_info("[TOUCHWAKE] Got long first touch up, resleeping, touchtime = %d\n", time_pressed);
-#endif
-				schedule_work(&presspower_work);
+				tw_debug("[TOUCHWAKE] Got long first touch up, resleeping, touchtime = %d\n", time_pressed);
+
+				schedule_work(&presssleepkey_work);
 			}
 			else {
-#ifdef DEBUG_PRINT
-				pr_info("[TOUCHWAKE] Got short first touch up, touchtime = %d\n", time_pressed);
-#endif
+				tw_debug("[TOUCHWAKE] Got short first touch up, touchtime = %d\n", time_pressed);
+
 			}
 		}
 	}
@@ -443,9 +470,7 @@ EXPORT_SYMBOL(touch_press);
 
 void set_powerkeydev(struct input_dev * input_device)
 {
-#ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Powerkey device set to: %p\n", input_device);
-#endif
+	tw_debug("[TOUCHWAKE] Powerkey device set to: %p\n", input_device);
 
 	powerkey_device = input_device;
 	return;
@@ -485,3 +510,44 @@ static int __init touchwake_control_init(void)
 }
 
 device_initcall(touchwake_control_init);
+
+static struct input_dev *tw_keyemul_dev;
+
+static int __init tw_keyemul_dev_init(void)
+{
+	int error;
+
+	tw_keyemul_dev = input_allocate_device();
+	if (!tw_keyemul_dev) {
+		printk(KERN_ERR "touch_wake.c: Not enough memory\n");
+		error = -ENOMEM;
+		goto err_free_dev;
+	}
+
+	tw_keyemul_dev->name = "Touch wake key emulation device";
+	tw_keyemul_dev->id.bustype = BUS_VIRTUAL;
+
+	tw_keyemul_dev->evbit[0] = BIT_MASK(EV_KEY);
+	tw_keyemul_dev->keybit[BIT_WORD(KEY_WAKEUP)] = BIT_MASK(KEY_WAKEUP);
+	tw_keyemul_dev->keybit[BIT_WORD(KEY_SLEEP)] = BIT_MASK(KEY_SLEEP);
+
+	error = input_register_device(tw_keyemul_dev);
+	if (error) {
+		printk(KERN_ERR "touch_wake.c: Failed to register Touch wake key emulation device\n");
+		goto err_free_dev;
+	}
+
+	return 0;
+
+err_free_dev:
+	input_free_device(tw_keyemul_dev);
+	return error;
+}
+
+static void __exit tw_keyemul_dev_exit(void)
+{
+	input_unregister_device(tw_keyemul_dev);
+}
+
+module_init(tw_keyemul_dev_init);
+module_exit(tw_keyemul_dev_exit);
