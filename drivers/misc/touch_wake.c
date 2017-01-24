@@ -49,12 +49,11 @@ extern void touchscreen_disable(void);
 
 extern void enable_for_touchwake(void);
 extern void restore_for_touchwake(void);
+extern bool tw_debug_on = false;
 
 static bool touchwake_enabled = false;
 static bool touch_disabled = false;
 static bool device_suspended = false;
-
-static bool tw_debug_on = false;
 
 static bool timed_out = true;
 
@@ -205,13 +204,15 @@ static void presskey(unsigned int key)
 
 static void press_wakeupkey(struct work_struct * presswakeupkey_work)
 {
-	presskey(KEY_WAKEUP);
+	//presskey(KEY_WAKEUP); supported from Android 5+
+	presskey(KEY_POWER);
 	return;
 }
 
 static void press_sleepkey(struct work_struct * presssleepkey_work)
 {
-	presskey(KEY_SLEEP);
+	//presskey(KEY_SLEEP); supported from for Android 5+
+	presskey(KEY_POWER);
 	return;
 }
 
