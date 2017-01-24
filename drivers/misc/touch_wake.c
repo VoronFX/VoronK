@@ -89,7 +89,7 @@ static struct timeval touch_begin;
 #define TIME_LONGTOUCH 300
 #define POWERPRESS_DELAY 50
 
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 
 static void touchwake_disable_touch(void)
 {
@@ -187,20 +187,42 @@ static void touchwake_touchoff(struct work_struct * touchoff_work)
 	return;
 }
 
-static void press_powerkey(struct work_struct * presspower_work)
+static void press_wakeupkey(struct work_struct * presskey_work)
 {
 	mutex_lock(&lock);
 #ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating power press\n");
+	pr_info("[TOUCHWAKE] Emulating wakeup press\n");
 #endif
-	input_event(powerkey_device, EV_KEY, KEY_POWER, 1);
+	input_event(powerkey_device, EV_KEY, KEY_WAKEUP, 1);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
 
 #ifdef DEBUG_PRINT
-	pr_info("[TOUCHWAKE] Emulating power release\n");
+	pr_info("[TOUCHWAKE] Emulating wakeup release\n");
 #endif
-	input_event(powerkey_device, EV_KEY, KEY_POWER, 0);
+	input_event(powerkey_device, EV_KEY, KEY_WAKEUP, 0);
+	input_event(powerkey_device, EV_SYN, 0, 0);
+	msleep(POWERPRESS_DELAY);
+
+	mutex_unlock(&lock);
+
+	return;
+}
+
+static void press_sleepkey(struct work_struct * presskey_work)
+{
+	mutex_lock(&lock);
+#ifdef DEBUG_PRINT
+	pr_info("[TOUCHWAKE] Emulating sleep press\n");
+#endif
+	input_event(powerkey_device, EV_KEY, KEY_SLEEP, 1);
+	input_event(powerkey_device, EV_SYN, 0, 0);
+	msleep(POWERPRESS_DELAY);
+
+#ifdef DEBUG_PRINT
+	pr_info("[TOUCHWAKE] Emulating sleep release\n");
+#endif
+	input_event(powerkey_device, EV_KEY, KEY_SLEEP, 0);
 	input_event(powerkey_device, EV_SYN, 0, 0);
 	msleep(POWERPRESS_DELAY);
 
@@ -343,7 +365,7 @@ void proximity_off(void)
 		pr_info("[TOUCHWAKE] Waking by proximitor\n");
 #endif
 		device_suspended = false;
-		schedule_work(&presspower_work);
+		schedule_work(&press_wakeupkey);
 	}
 
 	prox_near = false;
@@ -409,7 +431,7 @@ void touch_press(bool up)
 			if (!up && (mode & LONGTOUCH_SLEEP_WAKE_BIT))
 				first_touch = true;
 			do_gettimeofday(&touch_begin);
-			schedule_work(&presspower_work);
+			schedule_work(&press_wakeupkey);
 		}
 		else if (up && first_touch) {
 			first_touch = false;
@@ -426,7 +448,7 @@ void touch_press(bool up)
 #ifdef DEBUG_PRINT
 				pr_info("[TOUCHWAKE] Got long first touch up, resleeping, touchtime = %d\n", time_pressed);
 #endif
-				schedule_work(&presspower_work);
+				schedule_work(&press_sleepkey);
 			}
 			else {
 #ifdef DEBUG_PRINT

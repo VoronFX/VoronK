@@ -251,9 +251,15 @@ static void input_handle_event(struct input_dev *dev,
 		break;
 
 	case EV_KEY:
+#ifdef DEBUG_PRINT
+		pr_info("[TOUCHWAKE] Got key event %d\n", code);
+#endif
 		if (is_event_supported(code, dev->keybit, KEY_MAX) &&
 			!!test_bit(code, dev->key) != value) {
 
+#ifdef DEBUG_PRINT
+			pr_info("[TOUCHWAKE] Key event %d passed filters\n", code);
+#endif
 #ifdef CONFIG_TOUCH_WAKE
 			if (code == KEY_POWER && !device_is_suspended()) {
 				if (value == 1) {
