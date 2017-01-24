@@ -359,7 +359,7 @@ void proximity_off(void)
 		pr_info("[TOUCHWAKE] Waking by proximitor\n");
 #endif
 		device_suspended = false;
-		schedule_work(&press_wakeupkey);
+		schedule_work(&presswakeupkey_work);
 	}
 
 	prox_near = false;
@@ -425,7 +425,7 @@ void touch_press(bool up)
 			if (!up && (mode & LONGTOUCH_SLEEP_WAKE_BIT))
 				first_touch = true;
 			do_gettimeofday(&touch_begin);
-			schedule_work(&press_wakeupkey);
+			schedule_work(&presswakeupkey_work);
 		}
 		else if (up && first_touch) {
 			first_touch = false;
@@ -442,7 +442,7 @@ void touch_press(bool up)
 #ifdef DEBUG_PRINT
 				pr_info("[TOUCHWAKE] Got long first touch up, resleeping, touchtime = %d\n", time_pressed);
 #endif
-				schedule_work(&press_sleepkey);
+				schedule_work(&presssleepkey_work);
 			}
 			else {
 #ifdef DEBUG_PRINT
