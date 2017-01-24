@@ -30,6 +30,7 @@
 
 #ifdef CONFIG_TOUCH_WAKE
 #include <linux/touch_wake.h>
+#define DEBUG_PRINT
 #endif
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
