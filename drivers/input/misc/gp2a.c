@@ -38,7 +38,6 @@
 #include <linux/touch_wake.h>
 bool proximity_last_state;
 bool forced_by_touch_wake;
-#define DEBUG_PRINT
 #endif
 struct gp2a_data *current_device;
 
@@ -255,14 +254,14 @@ static ssize_t proximity_enable_store(struct device *dev,
 
 	if (sysfs_streq(buf, "1")) {
 		new_value = true;
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE_PROXIMITY] Turning On\n");
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE_PROXIMITY] Turning On\n");
 #endif
 	}
 	else if (sysfs_streq(buf, "0")) {
 		new_value = false;
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE_PROXIMITY] Turning Off\n");
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE_PROXIMITY] Turning Off\n");
 #endif
 	}
 	else {

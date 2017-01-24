@@ -30,7 +30,6 @@
 
 #ifdef CONFIG_TOUCH_WAKE
 #include <linux/touch_wake.h>
-#define DEBUG_PRINT
 #endif
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
@@ -252,16 +251,18 @@ static void input_handle_event(struct input_dev *dev,
 		break;
 
 	case EV_KEY:
-#ifdef DEBUG_PRINT
-		pr_info("[TOUCHWAKE] Got key event %d\n", code);
+		bool issupported = is_event_supported(code, dev->keybit, KEY_MAX);
+
+#ifdef CONFIG_TOUCH_WAKE
+		tw_debug("[TOUCHWAKE] Got key event %d\n", code);
+		issupported = issupported || code == KEY_WAKEUP || code == KEY_SLEEP;
 #endif
-		if (is_event_supported(code, dev->keybit, KEY_MAX) &&
+		if (issupported &&
 			!!test_bit(code, dev->key) != value) {
 
-#ifdef DEBUG_PRINT
-			pr_info("[TOUCHWAKE] Key event %d passed filters\n", code);
-#endif
 #ifdef CONFIG_TOUCH_WAKE
+			tw_debug("[TOUCHWAKE] Key event %d passed filters\n", code);
+
 			if (code == KEY_POWER && !device_is_suspended()) {
 				if (value == 1) {
 					powerkey_pressed();
