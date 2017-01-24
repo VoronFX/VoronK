@@ -132,7 +132,7 @@ static void touchwake_early_suspend(struct early_suspend * h)
 		}
 
 
-		if ((mode & PROXIMITY_WAKE_BIT)) {
+		if ((mode & PROXIMITY_WAKE_BIT) || (mode & PROXIMITY_TOUCH_BIT)) {
 			enable_for_touchwake();
 		}
 	}
@@ -159,7 +159,7 @@ static void touchwake_late_resume(struct early_suspend * h)
 	if (touch_disabled)
 		touchwake_enable_touch();
 
-	if ((mode & PROXIMITY_WAKE_BIT))
+	if ((mode & PROXIMITY_WAKE_BIT) || (mode & PROXIMITY_TOUCH_BIT))
 		restore_for_touchwake();
 
 	timed_out = true;
@@ -272,6 +272,28 @@ static ssize_t touchwake_delay_write(struct device * dev, struct device_attribut
 	return size;
 }
 
+static ssize_t touchwake_mode_read(struct device * dev, struct device_attribute * attr, char * buf)
+{
+	return sprintf(buf, "%u\n", mode);
+}
+
+static ssize_t touchwake_mode_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+{
+	unsigned int data;
+
+	if (sscanf(buf, "%u\n", &data) == 1) {
+		mode = data;
+		tw_debug("[TOUCHWAKE] Mode set to %u\n", mode);
+
+	}
+	else {
+		tw_debug("[TOUCHWAKE] %s: invalid input\n", __FUNCTION__);
+
+	}
+
+	return size;
+}
+
 int get_touchoff_delay()
 {
 	return touchoff_delay;
@@ -319,6 +341,7 @@ static ssize_t touchwake_debug_write(struct device * dev, struct device_attribut
 
 static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, touchwake_status_read, touchwake_status_write);
 static DEVICE_ATTR(delay, S_IRUGO | S_IWUGO, touchwake_delay_read, touchwake_delay_write);
+static DEVICE_ATTR(mode, S_IRUGO | S_IWUGO, touchwake_mode_read, touchwake_mode_write);
 static DEVICE_ATTR(version, S_IRUGO, touchwake_version, NULL);
 static DEVICE_ATTR(debug, S_IRUGO | S_IWUGO, touchwake_debug_read, touchwake_debug_write);
 
@@ -410,7 +433,7 @@ void touch_press(bool up)
 	tw_debug("[TOUCHWAKE] Touch event! Up = %d\n", up);
 
 	if (likely(touchwake_enabled) && (mode & TOUCH_WAKE_BIT)
-		&& (prox_near || !(mode & PROXIMITY_TOUCH_BIT))) {
+		&& (!prox_near || !(mode & PROXIMITY_TOUCH_BIT))) {
 
 		if (unlikely(device_suspended)) {
 			device_suspended = false;
